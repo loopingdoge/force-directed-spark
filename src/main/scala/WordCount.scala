@@ -5,10 +5,10 @@ object WordCount {
     val spark = SparkSession
       .builder
       .appName("Word Count")
-      .config("spark.master", "local[2]")
+      .config("spark.master", "local")
       .getOrCreate()
     val sc = spark.sparkContext
-    val textFile = sc.textFile("data/words.txt")
+    val textFile = sc.textFile("data/pietronostro.txt")
     val counts = textFile.flatMap(line => line.split(" "))
       .map(word => (word, 1))
       .reduceByKey(_ + _)
