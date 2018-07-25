@@ -5,6 +5,30 @@
 - [Google Cloud SDK](https://cloud.google.com/sdk/)
 - [Scala SBT](https://www.scala-sbt.org/)
 
+## VSCode Setup
+
+- Make sure you have `JDK_HOME` or `JAVA_HOME` env variable correctly set
+- Add this line to `~/.sbt/1.0/plugins/plugins.sbt` (create it if necessary):
+
+```
+addSbtPlugin("org.ensime" % "sbt-ensime" % "2.5.1")
+```
+
+- Enter inside the project directory and run `sbt`
+
+```
+$ sbt
+```
+
+- Run `ensimeConfig`:
+
+```
+> ensimeConfig
+```
+
+- Install [this](https://marketplace.visualstudio.com/items?itemName=dragos.scala-lsp) extension
+- Say goodbye to IntelliJ Idea and uninstall it
+
 ## Run locally
 
 Enter inside the project directory:
