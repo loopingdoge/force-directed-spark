@@ -1,7 +1,7 @@
 import org.apache.spark.sql.SparkSession
 
 object WordCount {
-  def main(args: Array[String]) {
+  def run(args: Array[String]) {
     // Args parsing
     val inPath = args(0)
     val outPath = args(1)
