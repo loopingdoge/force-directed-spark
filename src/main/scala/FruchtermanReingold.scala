@@ -30,7 +30,7 @@ object FruchtermanReingold {
             for (u <- graph.vertices) {
                 if (u != v) {
                     val delta = v - u
-                    displacement = v.disp + delta.normalize * repulsiveForce(k, delta.length)
+                    displacement = displacement + delta.normalize * repulsiveForce(k, delta.length)
                 }
             }
             new FRVert(v.x, v.y, displacement)
