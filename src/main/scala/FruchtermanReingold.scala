@@ -1,4 +1,4 @@
-class FRVert(x: Double, y: Double, val disp: Vec2) extends Point2D(x, y) {
+class FRVert(x: Double, y: Double, val disp: Vec2) extends Point2(x, y) {
     override def toString = s"($x, $y, $disp)"
 }
 
