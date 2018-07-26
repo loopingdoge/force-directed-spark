@@ -5,17 +5,21 @@
 import scala.util.Random
 
 class Vertex2D(id: Int = -1) {
-    var pos = new Point2D(Random.nextDouble(), Random.nextDouble())
-    override def toString() = s"$id: $pos"
+    var pos = Point2D.random()
+    var disp = 0.0
 
     def -(other: Vertex2D) = this.pos - other.pos
+    
+    override def toString() = s"$id: $pos"
 }
 
 object SPRING {
-    val (c1, c2, c3, c4, maxIter) = (2, 1, 1, 0.4f, 100)
+    val (c1, c2, c3, c4, maxIter) = (2.0, 1.0, 1.0, 0.4, 100)
 
-    def attractive(d: Double) = c1 * math.log(d / c2).toDouble
-    def repulsive(d: Double) = c3 / math.sqrt(d).toDouble
+    def attractive(d: Double) = c1 * math.log(d / c2)
+    def repulsive(d: Double) = c3 / (math.sqrt(d) + 0.0001)
+    def attractive(d: Vec2) = new Point2D(math.log(d.x / c2), math.log(d.y / c2)) * c1
+    def repulsive(d: Vec2) = new Point2D(1.0/(math.sqrt(d.x) + 0.0001), 1.0/(math.sqrt(d.y) + 0.0001)) * c3
     
     def main(args: Array[String]) {
         // original uses c1 = 2, c2 = 1, c3 = 1, c4 = 0.1, and M = 100
@@ -26,27 +30,40 @@ object SPRING {
         val edges = graph.edges
         
         val frame = new Point2D(20, 20)
-        val area = frame.area
-        val optimalPairwiseDistance = math.sqrt(area / vertexNum)
+        //val area = frame.area
+        //val optimalPairwiseDistance = math.sqrt(area / vertexNum)
 
         var vertices = ((0 to vertexNum) map (i => new Vertex2D(i))).toList
         
-        val pairs = (for(x <- (0 to vertexNum); y <- (0 to vertexNum)) yield (x, y)).toSet.toList
-        println(pairs)
+        // all pairs except (i, i) i.e. same vertices
+        //val pairs = (for(x <- (0 to vertexNum); y <- (0 to vertexNum) if (x != y)) yield (x, y))
 
-        // TODO: scrivere codice effettivamente funzionante
-        for (i <- 1 to 2) {
-            // coppie di vertici non connessi aka forza repulsiva
-            val repulsiveDispl = (pairs filter (p => !(edges contains p))).map({
-                case (i, j) => vertices(i).pos - vertices(j).pos
-            })
-            // coppie di vertici connessi aka forza attrattiva
-            val attractiveDispl = (pairs filter (p => edges contains p)).map({
-                case (i, j) => vertices(i).pos - vertices(j).pos
-            })
+        // TODO: convertire codice da imperativo a funzionale
+        for (i <- 0 to 1) {
+            for (v <- 0 to vertexNum) {
+                for (u <- (v + 1) to vertexNum) {
+                    if (v != u) {
+                        println((v, u))
+                        val distance = (vertices(v) - vertices(u)).abs()
+                        if (edges contains (v, u)) {
+                            // attractive force between v and u
+                            // if you have a vector (v - u) (i.e. u -> v) then the attractive force adds to u and substracts to v ???
+                            val attractiveForce = attractive(distance * c4)
+                            vertices(v).pos = vertices(v).pos.shift(-attractiveForce.x, -attractiveForce.y) 
+                            vertices(u).pos = vertices(u).pos.shift(attractiveForce.x, attractiveForce.y)
+                        } else {
+                            // repulsive force
+                            // if you have a vector (v - u) (i.e. u -> v) then the repulsive force adds to v and substracts to u ???
+                            val repulsiveForce = repulsive(distance * c4)
+                            vertices(v).pos = vertices(v).pos.shift(repulsiveForce.x, repulsiveForce.y)
+                            vertices(u).pos = vertices(u).pos.shift(-repulsiveForce.x, -repulsiveForce.y)
+                        }
+                    }
+                }
+            }
         }
 
-        //vertices.foreach(v => println(v))
+        vertices.foreach(v => println(v))
 
         // Input G: Graph
         // Output: Drawing of G

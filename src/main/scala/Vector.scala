@@ -13,6 +13,9 @@ class Vec2(val x: Double, val y: Double) {
     def +(s: Vec2): Vec2 =
         new Vec2(x + s.x, y + s.y)
 
+    def abs() = 
+        new Vec2(math.abs(x), math.abs(y))
+
     override def toString: String = s"($x, $y)"
 }
 
@@ -38,6 +41,9 @@ class Vec3(val x: Double, val y: Double, val z: Double) {
 
     def +(s: Vec3): Vec3 =
         new Vec3(x + s.x, y * s.y, z + s.z)
+
+    def abs() = 
+        new Vec3(math.abs(x), math.abs(y), math.abs(z))
 
     override def toString: String = s"($x, $y, $z)"
 }
