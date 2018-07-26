@@ -35,31 +35,26 @@ object SPRING {
 
         var vertices = ((0 to vertexNum) map (i => new Vertex2D(i))).toList
         
-        // all pairs except (i, i) i.e. same vertices
-        //val pairs = (for(x <- (0 to vertexNum); y <- (0 to vertexNum) if (x != y)) yield (x, y))
+        // all non duplicate & non identical pairs
+        val pairs = (for(x <- (0 to vertexNum); y <- ((x + 1) to vertexNum) if (x != y)) yield (x, y))
 
-        // TODO: convertire codice da imperativo a funzionale
-        for (i <- 0 to 1) {
-            for (v <- 0 to vertexNum) {
-                for (u <- (v + 1) to vertexNum) {
-                    if (v != u) {
-                        println((v, u))
-                        val distance = (vertices(v) - vertices(u)).abs()
-                        if (edges contains (v, u)) {
-                            // attractive force between v and u
-                            // if you have a vector (v - u) (i.e. u -> v) then the attractive force adds to u and substracts to v ???
-                            val attractiveForce = attractive(distance * c4)
-                            vertices(v).pos = vertices(v).pos.shift(-attractiveForce.x, -attractiveForce.y) 
-                            vertices(u).pos = vertices(u).pos.shift(attractiveForce.x, attractiveForce.y)
-                        } else {
-                            // repulsive force
-                            // if you have a vector (v - u) (i.e. u -> v) then the repulsive force adds to v and substracts to u ???
-                            val repulsiveForce = repulsive(distance * c4)
-                            vertices(v).pos = vertices(v).pos.shift(repulsiveForce.x, repulsiveForce.y)
-                            vertices(u).pos = vertices(u).pos.shift(-repulsiveForce.x, -repulsiveForce.y)
-                        }
-                    }
-                }
+        for (
+            u <- 0 to vertexNum;
+            v <- (u + 1) to vertexNum if (u != v)
+        ) {
+            val distance = (vertices(v) - vertices(u)).abs()
+            if (edges contains (v, u)) {
+                // attractive force between v and u
+                // if you have a vector (v - u) (i.e. u -> v) then the attractive force adds to u and substracts to v ???
+                val attractiveForce = attractive(distance * c4)
+                vertices(v).pos = vertices(v).pos.shift(-attractiveForce.x, -attractiveForce.y) 
+                vertices(u).pos = vertices(u).pos.shift(attractiveForce.x, attractiveForce.y)
+            } else {
+                // repulsive force
+                // if you have a vector (v - u) (i.e. u -> v) then the repulsive force adds to v and substracts to u ???
+                val repulsiveForce = repulsive(distance * c4)
+                vertices(v).pos = vertices(v).pos.shift(repulsiveForce.x, repulsiveForce.y)
+                vertices(u).pos = vertices(u).pos.shift(-repulsiveForce.x, -repulsiveForce.y)
             }
         }
 
