@@ -1,8 +1,11 @@
 import scala.util.Random
 
-class Point2(var x: Double = Random.nextDouble, var y: Double = Random.nextDouble) {
+@SerialVersionUID(100L)
+class Point2(var x: Double = Random.nextDouble, var y: Double = Random.nextDouble) extends Serializable {
     def +(other: Point2) = new Point2(x + other.x, y + other.y)
     def -(other: Point2) = new Vec2(x - other.x, y - other.y)
+
+    def +(a: Vec2) = new Point2(x + a.x, y + a.y)
     // dot product
     def **(other: Point2) = (x * other.x) + (y * other.y)
 
@@ -27,9 +30,12 @@ object Point2 {
     def one() = new Point2(1.0, 1.0)
 }
 
-class Point3(var x: Double = Random.nextDouble, var y: Double = Random.nextDouble, var z: Double = Random.nextDouble) {
+@SerialVersionUID(100L)
+class Point3(var x: Double = Random.nextDouble, var y: Double = Random.nextDouble, var z: Double = Random.nextDouble) extends Serializable {
     def +(other: Point3) = new Point3(x + other.x, y + other.y, z + other.z)
     def -(other: Point3) = new Vec3(x - other.x, y - other.y, z - other.z)
+
+    def +(a: Vec3) = new Point3(x + a.x, y + a.y, z + a.z)
     // dot product
     def **(other: Point3) = (x * other.x) + (y * other.y) + (z * other.z)
  
