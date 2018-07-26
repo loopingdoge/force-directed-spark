@@ -16,6 +16,9 @@ class Vec2(val x: Double, val y: Double) {
     def abs() = 
         new Vec2(math.abs(x), math.abs(y))
 
+    def toPoint() = 
+        new Point2(x, y)
+
     override def toString: String = s"($x, $y)"
 }
 
@@ -44,6 +47,9 @@ class Vec3(val x: Double, val y: Double, val z: Double) {
 
     def abs() = 
         new Vec3(math.abs(x), math.abs(y), math.abs(z))
+
+    def toPoint() = 
+        new Point3(x, y, z)
 
     override def toString: String = s"($x, $y, $z)"
 }
