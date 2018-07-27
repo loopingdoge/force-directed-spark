@@ -1,7 +1,5 @@
-import scala.util.Random
-
 @SerialVersionUID(100L)
-class Point2(var x: Double = Random.nextDouble, var y: Double = Random.nextDouble) extends Serializable {
+class Point2(val x: Double = Math.random, val y: Double = Math.random) extends Serializable {
     def +(other: Point2) = new Point2(x + other.x, y + other.y)
     def -(other: Point2) = new Vec2(x - other.x, y - other.y)
 
@@ -18,20 +16,21 @@ class Point2(var x: Double = Random.nextDouble, var y: Double = Random.nextDoubl
     def shift(a: Double, b: Double) = new Point2(x + a, y + b)
     def scale(a: Double, b: Double) = new Point2(x * a, y * b)
 
-    def abs() = new Point2(math.abs(x), math.abs(y))
+    def abs = new Point2(math.abs(x), math.abs(y))
+    def round = new Point2(math.round(x), math.round(y))
 
     def area = x * y
     override def toString = s"($x, $y)"
 }
 
 object Point2 {
-    def random() = new Point2
-    def zero() = new Point2(0.0, 0.0)
-    def one() = new Point2(1.0, 1.0)
+    def random = new Point2
+    def zero = new Point2(0.0, 0.0)
+    def one = new Point2(1.0, 1.0)
 }
 
 @SerialVersionUID(100L)
-class Point3(var x: Double = Random.nextDouble, var y: Double = Random.nextDouble, var z: Double = Random.nextDouble) extends Serializable {
+class Point3(val x: Double = Math.random, val y: Double = Math.random, val z: Double = Math.random) extends Serializable {
     def +(other: Point3) = new Point3(x + other.x, y + other.y, z + other.z)
     def -(other: Point3) = new Vec3(x - other.x, y - other.y, z - other.z)
 
@@ -48,12 +47,13 @@ class Point3(var x: Double = Random.nextDouble, var y: Double = Random.nextDoubl
     def shift(a: Double, b: Double, c: Double) = new Point3(x + a, y + b, z + c)
     def scale(a: Double, b: Double, c: Double) = new Point3(x * a, y * b, z * c)
 
-    def abs() = new Point3(math.abs(x), math.abs(y), math.abs(z))
+    def abs = new Point3(math.abs(x), math.abs(y), math.abs(z))
+    def round = new Point3(math.round(x), math.round(y), math.round(z))
 
     def volume = x * y * z
     override def toString = s"($x, $y, $z)"
 }
 
 object Point3 {
-    def random() = new Point3
+    def random = new Point3
 }
