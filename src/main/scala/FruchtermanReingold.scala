@@ -24,7 +24,7 @@ object FruchtermanReingold {
 
     def runSpark(sc: SparkContext, iterations: Int) {
         // Place vertices at random
-        val parsedGraph = PajekParser.parse("data/sample_graph.net")
+        val parsedGraph = Pajek.parse("data/sample_graph.net")
             .map { _ => new Point2(Math.random() * width, Math.random() * length) }
 
         // Create the spark graph
@@ -47,7 +47,7 @@ object FruchtermanReingold {
         val k = Math.sqrt(area / graph.numVertices) // Optimal pairwise distance
 
         // Main cycle
-        (0 until iterations).map { i =>
+        val computedGraphs = (0 until iterations).map { i =>
             val t = temperature(i, iterations)
 
             val repulsionDisplacements: RDD[(VertexId, Vec2)] = graph.vertices
@@ -79,7 +79,7 @@ object FruchtermanReingold {
                 }
                 .reduceByKey(_ + _)
 
-            // Sum the repulsion and attractive displacements and sum them
+            // Sum the repulsion and attractive displacements
             val sumDisplacements = repulsionDisplacements
                 .union(attractiveDisplacements)
                 .reduceByKey(_ + _)
@@ -106,6 +106,8 @@ object FruchtermanReingold {
 
             modifiedGraph
         }
+
+        Pajek.dump(Graph.fromSpark(computedGraphs.last), "out/pajekkone.net")
 
     }
 }

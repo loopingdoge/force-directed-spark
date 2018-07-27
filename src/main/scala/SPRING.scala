@@ -33,7 +33,7 @@ object SPRING {
     }
 
     def main(args: Array[String]) {
-        val p = PajekParser
+        val p = Pajek
         val filePath = args(0)    // path to pajek net formatted input file
         val graph = p.parse(filePath)
         val vertexNum = graph.vertices.size
