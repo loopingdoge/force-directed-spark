@@ -3,8 +3,8 @@ import org.apache.spark.graphx.{Graph => XGraph, Edge, VertexId}
 import org.apache.spark.rdd.RDD
 
 object FruchtermanReingold {
-    val width = 800
-    val length = 600
+    val width = 3000
+    val length = 3000
     val initialTemperature: Double = width / 10
 
     def repulsiveForce(k: Double, x: Double): Double = {
@@ -22,9 +22,9 @@ object FruchtermanReingold {
         - ((currIter - maxIter).toDouble / maxIter) * initialTemperature
     }
 
-    def runSpark(sc: SparkContext, iterations: Int) {
+    def runSpark(sc: SparkContext, iterations: Int, inFilePath: String, outFilePath: String) {
         // Place vertices at random
-        val parsedGraph = Pajek.parse("data/sample_graph.net")
+        val parsedGraph = Pajek.parse(inFilePath)
             .map { _ => new Point2(Math.random() * width, Math.random() * length) }
 
         // Create the spark graph
@@ -39,9 +39,6 @@ object FruchtermanReingold {
                     .map { case (u, v) => Edge(u, v, null) }
             )
         )
-
-        println("Initial graph:")
-        graph.vertices.foreach(println)
 
         val area = width * length
         val k = Math.sqrt(area / graph.numVertices) // Optimal pairwise distance
@@ -101,13 +98,13 @@ object FruchtermanReingold {
                     framedPos
             }
 
-            println(s"\nIteration ${i + 1}:")
-            modifiedGraph.vertices.foreach(println)
+            println(s"Iteration ${i + 1}/$iterations")
+//            modifiedGraph.vertices.foreach(println)
 
             modifiedGraph
         }
 
-        Pajek.dump(Graph.fromSpark(computedGraphs.last), "out/pajekkone.net")
+        Pajek.dump(Graph.fromSpark(computedGraphs.last), outFilePath)
 
     }
 }
