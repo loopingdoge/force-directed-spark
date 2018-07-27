@@ -15,6 +15,11 @@ object Pajek {
     }
 
     def dump(graph: Graph[Point2], filepath: String) = {
+
+        def round(num: Double): Double = {
+            BigDecimal(num).setScale(2, BigDecimal.RoundingMode.HALF_UP).toDouble
+        }
+
         val file = new File(filepath)
         val bw = new BufferedWriter(new FileWriter(file))
 
@@ -23,7 +28,7 @@ object Pajek {
             .vertices
             .zipWithIndex
             .foreach { case (v, i) => 
-                output += s"${i + 1} ${v.x} ${v.y}\n"
+                output += s"${i + 1} ${round(v.x)} ${round(v.y)}\n"
             }
 
         output += "*Edges\n"
