@@ -19,11 +19,7 @@ object Pajek {
         val vertices = (0 until nVertices).toList
 
         if(lines.next != "*Edges") vertices.foreach(_ => lines.next)
-        val edges = lines.map(line => {
-            println(line)
-            line.split(" ")
-        }).map(splitted => Tuple2(splitted(0).toInt, splitted(1).toInt)).toList
-        println(edges)
+        val edges = lines.map(line => line.split(" ")).map(splitted => Tuple2(splitted(0).toInt, splitted(1).toInt)).toList
         new Graph(vertices, edges)
     }
 
