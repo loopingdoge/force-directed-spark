@@ -17,9 +17,13 @@ object Pajek {
         val lines = Source.fromInputStream(stream).getLines
         val nVertices = lines.next.split(" ")(1).toInt
         val vertices = (0 until nVertices).toList
-        vertices.foreach(_ => lines.next)
-        lines.next // skip *Edges line
-        val edges = lines.map(line => line.split(" ")).map(splitted => Tuple2(splitted(0).toInt, splitted(1).toInt)).toList
+
+        if(lines.next != "*Edges") vertices.foreach(_ => lines.next)
+        val edges = lines.map(line => {
+            println(line)
+            line.split(" ")
+        }).map(splitted => Tuple2(splitted(0).toInt, splitted(1).toInt)).toList
+        println(edges)
         new Graph(vertices, edges)
     }
 
