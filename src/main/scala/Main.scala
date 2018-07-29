@@ -10,23 +10,30 @@ object Main {
     }
 
     def main(args: Array[String]) {
+        val algorightmToRun = args(0)
+        val inFilePath = args(1)
+        val outFilePath = args(2)
+
         // Spark initialization
         val spark = SparkSession
             .builder
             .appName("Force Directed Layout")
-            .config("spark.master", "local[2]")
+            .config("spark.master", "local[4]")
             .getOrCreate()
 
         val sc = spark.sparkContext
         sc.setLogLevel("ERROR")
 
         val calcTime = time {
-            FruchtermanReingold.runSpark(
-                sc,
-                3,
-                "data/eth-6h.net",
-                "out/eth-6h.net"
-            )
+            algorightmToRun match {
+                case "FR" => FruchtermanReingold.runSpark(
+                    sc,
+                    3,
+                    "data/eth-6h.net",
+                    "out/eth-6h.net"
+                )
+                case "SPRING" => SPRING.runSpark(sc, 1, inFilePath, outFilePath)
+            }
         }
 
         println(s"Elapsed time: $calcTime ms")
