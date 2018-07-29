@@ -32,7 +32,7 @@ object Main {
                     "data/eth-6h.net",
                     "out/eth-6h.net"
                 )
-                case "SPRING" => SPRING.runSpark(sc, 1, inFilePath, outFilePath)
+                case "SPRING" => SPRING.runSpark(sc, 3, inFilePath, outFilePath)
             }
         }
 

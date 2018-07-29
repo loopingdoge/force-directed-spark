@@ -12,10 +12,10 @@ object SPRING {
     val (c1, c2, c3, c4) = (2.0, 1.0, 1.0, 0.1)
     val (width, length) = (3000, 3000)
 
-    def attractiveForce(d: Double) = c1 * math.log(d / c2)
-    def repulsiveForce(d: Double) = c3 / (math.sqrt(d) + 0.00001)
-    def attractiveForce(d: Vec2) = new Point2(math.log(d.x / c2), math.log(d.y / c2)) * c1
-    def repulsiveForce(d: Vec2) = new Point2(1.0/(math.sqrt(d.x) + 0.00001), 1.0/(math.sqrt(d.y) + 0.00001)) * c3
+    def attractiveForce(d: Double) = c1 * math.log((d + 0.0001) / c2)
+    def repulsiveForce(d: Double) = c3 / (math.sqrt(d) + 0.0001)
+    def attractiveForce(d: Vec2) = new Point2(math.log((d.x + 0.0001) / c2), math.log((d.y + 0.0001) / c2)) * c1
+    def repulsiveForce(d: Vec2) = new Point2(1.0/(math.sqrt(d.x) + 0.0001), 1.0/(math.sqrt(d.y) + 0.0001)) * c3
 
     // Sequential but more functional-like version using unmutables
     def run(iteration: Int, allPairs: List[(Int, Int)], edges: List[(Int, Int)], vertices: List[Point2]): List[Point2] = {
