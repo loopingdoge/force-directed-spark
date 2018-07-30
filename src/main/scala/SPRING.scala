@@ -78,7 +78,7 @@ object SPRING {
 
         // Main cycle
         val computedGraph = (0 until iterations).foldLeft(initialGraph) { (graph, i) =>
-            val repulsionDisplacements: RDD[(VertexId, Vec2)] = initialGraph.vertices
+            val repulsionDisplacements: RDD[(VertexId, Vec2)] = graph.vertices
                 // Generate every possible node pairs
                 .cartesian(graph.vertices)
                 // Remove the pairs having the same ID
