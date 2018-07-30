@@ -8,18 +8,18 @@ object FruchtermanReingold {
     val initialTemperature: Double = width / 10
 
     def repulsiveForce(k: Double, x: Double): Double = {
-        val divisor = if (x == 0) 0.1 else x
+        val divisor = if (x == 0) 0.001 else x
         Math.pow(k, 2) / divisor
     }
 
     def attractiveForce(k: Double, x: Double): Double = {
-        val divisor = if (x == 0) 0.1 else x
+        val divisor = if (x == 0) 0.001 else x
         Math.pow(x, 2) / divisor
     }
 
     // Inverse linear temperature decay
     def temperature(currIter: Int, maxIter: Int): Double = {
-        - ((currIter - maxIter).toDouble / maxIter) * initialTemperature
+        -((currIter - maxIter).toDouble / maxIter) * initialTemperature
     }
 
     def runSpark(sc: SparkContext, iterations: Int, inFilePath: String, outFilePath: String) {
@@ -28,7 +28,7 @@ object FruchtermanReingold {
             .map { _ => new Point2(Math.random() * width, Math.random() * length) }
 
         // Create the spark graph
-        val graph = XGraph(
+        val initialGraph = XGraph(
             sc.parallelize(
                 parsedGraph.vertices
                     .zipWithIndex
@@ -41,10 +41,10 @@ object FruchtermanReingold {
         )
 
         val area = width * length
-        val k = Math.sqrt(area / graph.numVertices) // Optimal pairwise distance
+        val k = Math.sqrt(area / initialGraph.numVertices) // Optimal pairwise distance
 
         // Main cycle
-        val computedGraphs = (0 until iterations).map { i =>
+        val computedGraph = (0 until iterations).foldLeft(initialGraph) { case (graph, i) =>
             val t = temperature(i, iterations)
 
             val repulsionDisplacements: RDD[(VertexId, Vec2)] = graph.vertices
@@ -52,16 +52,16 @@ object FruchtermanReingold {
                 .cartesian(graph.vertices)
                 // Remove the pairs having the same ID
                 .filter {
-                    case ((id1, _), (id2, _)) if id1 == id2 => false
-                    case _ => true
-                }
+                case ((id1, _), (id2, _)) if id1 == id2 => false
+                case _ => true
+            }
                 // Calculate the displacement for every pair
                 .map {
-                    case ((id1, pos1), (id2, pos2)) =>
-                        val delta = pos1 - pos2
-                        val displacement = delta.normalize * repulsiveForce(k, delta.length)
-                        (id1, displacement)
-                }
+                case ((id1, pos1), (id2, pos2)) =>
+                    val delta = pos1 - pos2
+                    val displacement = delta.normalize * repulsiveForce(k, delta.length)
+                    (id1, displacement)
+            }
                 // Sum the displacements of the pairs having the same key
                 // We finally obtain the displacement for every node
                 .reduceByKey((a: Vec2, b: Vec2) => a + b)
@@ -70,10 +70,10 @@ object FruchtermanReingold {
                 // Calculate the displacement for every edge
                 // Flatten the list containing 2 pairs (one for each node of the edge)
                 .flatMap { t =>
-                    val delta = t.srcAttr - t.dstAttr
-                    val displacement = delta.normalize * attractiveForce(k, delta.length)
-                    List((t.srcId, -displacement), (t.dstId, displacement))
-                }
+                val delta = t.srcAttr - t.dstAttr
+                val displacement = delta.normalize * attractiveForce(k, delta.length)
+                List((t.srcId, -displacement), (t.dstId, displacement))
+            }
                 .reduceByKey(_ + _)
 
             // Sum the repulsion and attractive displacements
@@ -91,20 +91,21 @@ object FruchtermanReingold {
                 case (id, pos) =>
                     val vDispl = sumDisplacements(id)
                     val newPos = pos + vDispl.normalize * Math.min(t, vDispl.length)
-                    val framedPos = new Point2(
-                        Math.min(width / 2,  Math.max(-width / 2, newPos.x)),
-                        Math.min(length / 2, Math.max(-length / 2, newPos.y))
-                    )
-                    framedPos
+//                    This seems to be useless and aesthetically unpleasant...
+//                    val framedPos = new Point2(
+//                        Math.min(width / 2, Math.max(-width / 2, newPos.x)),
+//                        Math.min(length / 2, Math.max(-length / 2, newPos.y))
+//                    )
+                    newPos
             }
 
             println(s"Iteration ${i + 1}/$iterations")
-//            modifiedGraph.vertices.foreach(println)
+            //            modifiedGraph.vertices.foreach(println)
 
             modifiedGraph
         }
 
-        Pajek.dump(Graph.fromSpark(computedGraphs.last), outFilePath)
+        Pajek.dump(Graph.fromSpark(computedGraph), outFilePath)
 
     }
 }
