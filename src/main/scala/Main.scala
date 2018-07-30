@@ -27,7 +27,7 @@ object Main {
         val calcTime = time {
             algorightmToRun match {
                 case "FR" => FruchtermanReingold.runSpark(sc, 50, inFilePath, outFilePath)
-                case "SPRING" => SPRING.runSpark(sc, 3, inFilePath, outFilePath)
+                case "SPRING" => SPRING.runSpark(sc, 10, inFilePath, outFilePath)
             }
         }
 
