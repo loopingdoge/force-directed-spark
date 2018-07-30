@@ -10,7 +10,7 @@ import org.apache.spark.rdd.RDD
 object SPRING {
     // original uses c1 = 2, c2 = 1, c3 = 1, c4 = 0.1, and M = 100
     val (c1, c2, c3, c4) = (2.0, 1.0, 1.0, 0.1)
-    val (width, length) = (3000, 3000)
+    val (width, length) = (10000, 10000)
 
     def attractiveForce(d: Double) = c1 * math.log((d + 0.0001) / c2)
     def repulsiveForce(d: Double) = c3 / (math.sqrt(d) + 0.0001)
