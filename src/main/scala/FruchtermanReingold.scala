@@ -3,8 +3,8 @@ import org.apache.spark.graphx.{Graph => XGraph, Edge, VertexId}
 import org.apache.spark.rdd.RDD
 
 object FruchtermanReingold {
-    val width = 3000
-    val length = 3000
+    val width = 1000
+    val length = 1000
     val initialTemperature: Double = width / 10
 
     def repulsiveForce(k: Double, x: Double): Double = {
@@ -45,6 +45,7 @@ object FruchtermanReingold {
 
         // Main cycle
         val computedGraph = (0 until iterations).foldLeft(initialGraph) { case (graph, i) =>
+            val t0 = System.currentTimeMillis()
             val t = temperature(i, iterations)
 
             val repulsionDisplacements: RDD[(VertexId, Vec2)] = graph.vertices
@@ -99,9 +100,11 @@ object FruchtermanReingold {
                     newPos
             }
 
-            println(s"Iteration ${i + 1}/$iterations")
-            //            modifiedGraph.vertices.foreach(println)
+            val t1 = System.currentTimeMillis()
+            println(s"Iteration ${i + 1}/$iterations, ${t1 - t0} ms")
 
+            //            modifiedGraph.vertices.foreach(println)
+            modifiedGraph.checkpoint
             modifiedGraph
         }
 

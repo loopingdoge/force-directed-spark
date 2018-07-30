@@ -78,6 +78,7 @@ object SPRING {
 
         // Main cycle
         val computedGraph = (0 until iterations).foldLeft(initialGraph) { (graph, i) =>
+            val t0 = System.currentTimeMillis()
             val repulsionDisplacements: RDD[(VertexId, Vec2)] = initialGraph.vertices
                 // Generate every possible node pairs
                 .cartesian(graph.vertices)
@@ -123,8 +124,10 @@ object SPRING {
                     newPos
             }
 
-            println(s"Iteration ${i + 1}/$iterations")
+            val t1 = System.currentTimeMillis()
+            println(s"Iteration ${i + 1}/$iterations, ${t1 - t0} ms")
             //modifiedGraph.vertices.foreach(println)
+            modifiedGraph.checkpoint
             modifiedGraph
         }
 
