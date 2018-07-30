@@ -4,7 +4,7 @@ object HarelKoren {
     val rad = 7         // radius of local neighborhood
     val minSize = 10    // size of coarsest graph
 
-    def main(args: Array[String]) = {
+    def run(args: Array[String]) = {
         /*  
             Compute all-pairs shortest path lengths d_{i, j}
             Init a layout L by placing vertices at random

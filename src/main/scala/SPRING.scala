@@ -9,7 +9,7 @@ import org.apache.spark.rdd.RDD
 
 object SPRING {
     // original uses c1 = 2, c2 = 1, c3 = 1, c4 = 0.1, and M = 100
-    val (c1, c2, c3, c4) = (2.0, 1.0, 1.0, 0.1)
+    val (c1, c2, c3, c4) = (2.0, 1.0, 1.0, 0.01)
     val (width, length) = (10000, 10000)
 
     def attractiveForce(d: Double) = c1 * math.log((d + 0.0001) / c2)
@@ -64,7 +64,7 @@ object SPRING {
         val parsedGraph = Pajek.parse(inFilePath) map { _ => new Point2() }
 
         // Create the spark graph
-        val graph = XGraph(
+        val initialGraph = XGraph(
             sc.parallelize(
                 parsedGraph.vertices
                     .zipWithIndex
@@ -77,8 +77,8 @@ object SPRING {
         )
 
         // Main cycle
-        val computedGraphs = (0 until iterations).map { i =>
-            val repulsionDisplacements: RDD[(VertexId, Vec2)] = graph.vertices
+        val computedGraph = (0 until iterations).foldLeft(initialGraph) { (graph, i) =>
+            val repulsionDisplacements: RDD[(VertexId, Vec2)] = initialGraph.vertices
                 // Generate every possible node pairs
                 .cartesian(graph.vertices)
                 // Remove the pairs having the same ID
@@ -119,7 +119,7 @@ object SPRING {
             val modifiedGraph = graph.mapVertices {
                 case (id, pos) =>
                     val vDispl = sumDisplacements(id)
-                    val newPos = pos + vDispl.normalize * vDispl.length * 0.01
+                    val newPos = pos + vDispl.normalize * vDispl.length * c4
                     newPos
             }
 
@@ -128,12 +128,10 @@ object SPRING {
             modifiedGraph
         }
 
-        val outGraph = Graph.fromSpark(computedGraphs.last)
-
-        val vertices = outGraph.vertices
-        val (maxX, maxY) = ((vertices map(_.x)) max, (vertices map(_.y)) max)
-        val normVertices = vertices map (p => new Point2(p.x/maxX * width, p.y/maxY * length))
-        Pajek.dump(new Graph(normVertices, outGraph.edges), outFilePath)
+        val vertices = computedGraph.vertices
+        val (maxX, maxY) = ((vertices map(_._2.x)) max, (vertices map(_._2.y)) max)
+        val normVertices = (vertices map (v => new Point2(v._2.x/maxX * width, v._2.y/maxY * length)) collect).toList
+        Pajek.dump(new Graph(normVertices, parsedGraph.edges), outFilePath)
     }
 
     /* def main(args: Array[String]) {
