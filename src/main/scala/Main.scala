@@ -18,7 +18,7 @@ object Main {
         val spark = SparkSession
             .builder
             .appName("Force Directed Layout")
-            .config("spark.master", "local[4]")
+            .config("spark.master", "local")
             .getOrCreate()
 
         val sc = spark.sparkContext
@@ -26,12 +26,7 @@ object Main {
 
         val calcTime = time {
             algorightmToRun match {
-                case "FR" => FruchtermanReingold.runSpark(
-                    sc,
-                    3,
-                    "data/eth-6h.net",
-                    "out/eth-6h.net"
-                )
+                case "FR" => FruchtermanReingold.runSpark(sc, 50, inFilePath, outFilePath)
                 case "SPRING" => SPRING.runSpark(sc, 3, inFilePath, outFilePath)
             }
         }
