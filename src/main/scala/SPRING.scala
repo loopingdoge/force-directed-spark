@@ -11,7 +11,7 @@ import org.apache.spark.rdd.RDD
 object SPRING {
     // original uses c1 = 2, c2 = 1, c3 = 1, c4 = 0.1, and M = 100
     val (c1, c2, c3, c4) = (2.0, 1.0, 1.0, 0.01)
-    val (width, length) = (3000, 3000)
+    val (width, length) = (10000, 10000)
 
     // Algorithm forces
     def attractiveForce(d: Double) = c1 * math.log((d + 0.0001) / c2)
@@ -78,15 +78,11 @@ object SPRING {
             )
         )
 
-        // Pregel va per tot iterazioni in cui i nodi si scambiano i messaggi, idea: nodi si cambiano le pos e ognuno si calcola i suoi displacement
-        // Quindi esegui pregel per
-
-        val allPairs = initialGraph.vertices.cartesian(initialGraph.vertices).cache
-
         // Main cycle
         val computedGraph = (0 until iterations).foldLeft(initialGraph) { (graph, i) =>
             val t0 = System.currentTimeMillis()
-            val repulsionDisplacements: RDD[(VertexId, Vec2)] = allPairs
+            val repulsionDisplacements: RDD[(VertexId, Vec2)] = graph.vertices
+                .cartesian(graph.vertices)
                 // Remove the pairs having the same ID
                 .filter {
                     case ((id1, _), (id2, _)) if id1 == id2 => false
