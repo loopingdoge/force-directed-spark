@@ -85,7 +85,10 @@ object SPRING {
 
         // Main cycle
         val computedGraph = (0 until iterations).foldLeft(initialGraph) { (graph, i) =>
+<<<<<<< HEAD
             val repulsionDisplacements: RDD[(VertexId, Vec2)] = allPairs
+=======
+>>>>>>> 2b7c53c7323b035efc5affcf8eb517b31306e0f1
                 // Remove the pairs having the same ID
                 .filter {
                     case ((id1, _), (id2, _)) if id1 == id2 => false
