@@ -8,7 +8,7 @@ import org.apache.spark.graphx.{Graph => XGraph, Edge, VertexId}
 import org.apache.spark.graphx.EdgeTriplet
 import org.apache.spark.rdd.RDD
 
-object SPRING {
+object SPRING extends LogMeBabyOneMoreTime {
     // original uses c1 = 2, c2 = 1, c3 = 1, c4 = 0.1, and M = 100
     val (c1, c2, c3, c4) = (4.0, 1.0, 2.0, 0.01)
     val (width, length) = (1000, 1000)
@@ -95,11 +95,90 @@ object SPRING {
         Pajek.dump(new Graph(normVertices, parsedGraph.edges), outFilePath)
     }
 
-    def setup(sc: SparkContext, iterations: Int, inFilePath: String, outFilePath: String) = {
+    def start(sc: SparkContext, inFilePath: String): XGraph[Point2, Null] = {
+        val parsedGraph = Pajek.parse(inFilePath) map { _ => new Point2() }
 
+        // Create the spark graph
+        val initialGraph = XGraph(
+            sc.parallelize(
+                parsedGraph.vertices
+                    .zipWithIndex
+                    .map { case (v, i) => (i.toLong + 1, v) }
+            ),
+            sc.parallelize(
+                parsedGraph.edges
+                    .map { case (u, v) => Edge(u, v, null) }
+            )
+        )
+        return initialGraph
     }
 
-    def main(args: Array[String]) {
+    def run(iteration: Int, graph: XGraph[Point2, Null]): XGraph[Point2, Null] = {
+        val repulsionDisplacements: RDD[(VertexId, Vec2)] = graph.vertices
+        .cartesian(graph.vertices)
+        // Remove the pairs having the same ID
+        .filter {
+            case ((id1, _), (id2, _)) if id1 == id2 => false
+            case _ => true
+        }
+        // Calculate the displacement for every pair
+        .map {
+            case ((id1, pos1), (id2, pos2)) =>
+                val delta = pos1 - pos2
+                val displacement = delta.normalize * repulsiveForce(delta.length)
+                (id1, displacement)
+        }
+        // Sum the displacements of the pairs having the same key
+        // We finally obtain the displacement for every node
+        .reduceByKey((a: Vec2, b: Vec2) => a + b)
+
+        val attractiveDisplacements: RDD[(VertexId, Vec2)] = graph.triplets
+            // Calculate the displacement for every edge
+            // Flatten the list containing 2 pairs (one for each node of the edge)
+            .flatMap { t =>
+                val delta = t.srcAttr - t.dstAttr
+                val displacement = delta.normalize * attractiveForce(delta.length)
+                List((t.srcId, -displacement), (t.dstId, displacement))
+            }
+            .reduceByKey(_ + _)
+
+        // Sum the repulsion and attractive displacements
+        val sumDisplacements = repulsionDisplacements
+            .union(attractiveDisplacements)
+            .reduceByKey(_ + _)
+            .collect
+            // Transform to a Map in order to get the displacement given the nodeID
+            .toMap
+
+        // Obtain a new graph by summing the displacements to the node current position
+        val modifiedGraph = graph.mapVertices {
+            case (id, pos) =>
+                val vDispl = sumDisplacements(id)
+                val newPos = pos + vDispl.normalize * vDispl.length * c4
+                newPos
+        }
+
+        //modifiedGraph.vertices.foreach(println)
+        modifiedGraph.checkpoint
+        return modifiedGraph
+    }
+
+    def end(graph: XGraph[Point2, Null], outFilePath: String) {
+        val maxX = ((graph.vertices.collect map {
+            case (id, pos) => pos.x
+        }) max)
+        val maxY = ((graph.vertices.collect map {
+            case (id, pos) => pos.y
+        }) max)
+        println(maxX)
+        println(maxY)
+        //val normVertices = (vertices map (v => new Point2(v._2.x/maxX * width, v._2.y/maxY * length)) collect).toList
+        Pajek.dump(Graph.fromSpark(graph mapVertices {
+            case (id, pos) => new Point2(pos.x/maxX, pos.y/maxY)
+        }), outFilePath)
+    }
+
+    def niam(args: Array[String]) {
 
         val maxIter = 1000
         val graph = Pajek.parse(args(0))
