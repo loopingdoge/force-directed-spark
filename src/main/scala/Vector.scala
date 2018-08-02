@@ -18,6 +18,12 @@ class Vec2(val x: Double, val y: Double) extends Serializable {
     def +(s: Vec2): Vec2 =
         new Vec2(x + s.x, y + s.y)
 
+    def -(s: Vec2): Vec2 =
+        new Vec2(x - s.x, y - s.y)
+
+    def -(s: Double): Vec2 =
+        new Vec2(x - s, y - s)
+
     def unary_- =
         new Vec2(-x, -y)
 
@@ -56,12 +62,15 @@ class Vec3(val x: Double, val y: Double, val z: Double) extends Serializable {
         new Vec3(x * s, y * s, z * s)
 
     def +(s: Vec3): Vec3 =
-        new Vec3(x + s.x, y * s.y, z + s.z)
+        new Vec3(x + s.x, y + s.y, z + s.z)
+
+    def -(s: Vec3): Vec3 =
+        new Vec3(x - s.x, y - s.y, z - s.z)
 
     def abs() = 
         new Vec3(math.abs(x), math.abs(y), math.abs(z))
 
-    def toPoint() = 
+    def toPoint =
         new Point3(x, y, z)
 
     override def toString: String = s"($x, $y, $z)"

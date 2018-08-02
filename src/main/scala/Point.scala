@@ -20,11 +20,12 @@ class Point2(val x: Double = Math.random, val y: Double = Math.random) extends S
     def round = new Point2(math.round(x), math.round(y))
 
     def area = x * y
+    def toVec: Vec2 = new Vec2(x, y)
     override def toString = s"($x, $y)"
 }
 
 object Point2 {
-    def random = new Point2
+    def random = new Point2(Math.random(), Math.random())
     def zero = new Point2(0.0, 0.0)
     def one = new Point2(1.0, 1.0)
 }
@@ -51,9 +52,10 @@ class Point3(val x: Double = Math.random, val y: Double = Math.random, val z: Do
     def round = new Point3(math.round(x), math.round(y), math.round(z))
 
     def volume = x * y * z
+    def toVec: Vec3 = new Vec3(x, y, z)
     override def toString = s"($x, $y, $z)"
 }
 
 object Point3 {
-    def random = new Point3
+    def random = new Point3(Math.random, Math.random, Math.random)
 }
