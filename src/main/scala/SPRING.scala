@@ -99,7 +99,7 @@ object SPRING {
 
     def main(args: Array[String]) {
 
-        val maxIter = 1000
+        val maxIter = 2000
         val graph = Pajek.parse(args(0))
         val vertexNum = graph.vertices.size
         
@@ -112,8 +112,14 @@ object SPRING {
             vertices(i) = ((Math.random, Math.random))
         }
 
+        var distance = (0.0, 0.0)
+        var displacement = (0.0, 0.0)
+        var length = 0.0
+
         for (i <- 0 to maxIter) {
             val t0 = System.currentTimeMillis()
+            var normDistance = (0.0, 0.0)
+            var repulsive = 0.0
             // Repulsive forces iteration
             for (
                 v <- 0 until (vertexNum - 1);
@@ -121,26 +127,31 @@ object SPRING {
             ) {
                 // repulsiveForce force
                 // if you have a vector (v - u) (i.e. u -> v) then the repulsiveForce force adds to v and substracts to u ???
-                var distance = ((vertices(v)._1 - vertices(u)._1), (vertices(v)._2 - vertices(u)._2))
-                var length = Math.sqrt(Math.pow(distance._1, 2) + Math.pow(distance._2, 2))
-                var repulsive = repulsiveForce(length) * c4
-                var displacement = (distance._1 / length * repulsive, distance._2 / length * repulsive)
+                distance = ((vertices(v)._1 - vertices(u)._1), (vertices(v)._2 - vertices(u)._2))
+                length = Math.sqrt(Math.pow(distance._1, 2) + Math.pow(distance._2, 2))
+                normDistance = (distance._1 / length, distance._2 / length)
+
+                repulsive = repulsiveForce(length) * c4
+                displacement = (normDistance._1 * repulsive, normDistance._2 * repulsive)
                 vertices(v) = (vertices(v)._1 + displacement._1, vertices(v)._2 + displacement._2)
                 vertices(u) = (vertices(u)._1 - displacement._1, vertices(u)._2 - displacement._2)
             }
 
             // Attractive forces iteration
+            var attractive = 0.0
             for ((v, u) <- edges) {
-                var distance = ((vertices(v - 1)._1 - vertices(u - 1)._1), (vertices(v - 1)._2 - vertices(u - 1)._2))
-                var length = Math.sqrt(Math.pow(distance._1, 2) + Math.pow(distance._2, 2))
-                var attractive = attractiveForce(length) * c4
-                var displacement = (distance._1 / length * attractive, distance._2 / length * attractive)
+                distance = ((vertices(v - 1)._1 - vertices(u - 1)._1), (vertices(v - 1)._2 - vertices(u - 1)._2))
+                length = Math.sqrt(Math.pow(distance._1, 2) + Math.pow(distance._2, 2))
+
+                attractive = attractiveForce(length) * c4
+
+                displacement = (distance._1 * attractive, distance._2 * attractive)
                 vertices(v - 1) = (vertices(v - 1)._1 - displacement._1, vertices(v - 1)._2 - displacement._2)
                 vertices(u - 1) = (vertices(u - 1)._1 + displacement._1, vertices(u - 1)._2 + displacement._2)
             }
     
             val t1 = System.currentTimeMillis()
-            //println(s"iteration $i took ${t1 - t0}ms")
+            println(s"iteration $i took ${t1 - t0}ms")
         }
         
         val layoutedVertices = (0 until vertexNum) map {
