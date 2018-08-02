@@ -11,54 +11,13 @@ import org.apache.spark.rdd.RDD
 object SPRING {
     // original uses c1 = 2, c2 = 1, c3 = 1, c4 = 0.1, and M = 100
     val (c1, c2, c3, c4) = (2.0, 1.0, 1.0, 0.01)
-    val (width, length) = (10000, 10000)
+    val (width, length) = (1000, 1000)
 
     // Algorithm forces
     def attractiveForce(d: Double) = c1 * math.log((d + 0.0001) / c2)
     def repulsiveForce(d: Double) = c3 / (math.sqrt(d) + 0.0001)
     def attractiveForce(d: Vec2) = new Point2(math.log((d.x + 0.0001) / c2), math.log((d.y + 0.0001) / c2)) * c1
     def repulsiveForce(d: Vec2) = new Point2(1.0/(math.sqrt(d.x) + 0.0001), 1.0/(math.sqrt(d.y) + 0.0001)) * c3
-
-    // Sequential but more functional-like version using unmutables
-    def run(iteration: Int, allPairs: List[(Int, Int)], edges: List[(Int, Int)], vertices: List[Point2]): List[Point2] = {
-        if (iteration == 0) {
-            vertices
-        } else {
-            val pairsDist = allPairs map {
-                case (v, u) => 
-                    val delta = vertices(v) - vertices(u)
-                    (v, u, delta)
-            }
-
-            // Compute repulsive forces for every pair independent of the fact that they are linked or not 
-            val repulsiveDisplacements = pairsDist map {
-                case (v, u, delta) => 
-                    val repulsive = delta.normalize * repulsiveForce(delta.length)
-                    (v, repulsive)
-            }
-
-            val attractiveDisplacements = pairsDist filter {
-                // filter pairs that are connected by DIRECTED edges
-                case (v, u, d) if edges contains (v, u) => true
-                case _ => false
-            } flatMap {
-                // for every pair compute the attractive displacements
-                case (v, u, delta) => 
-                    val attractive = delta.normalize * attractiveForce(delta.length)
-                    List((v, -attractive), (u, attractive))
-            }
-
-            val displacementsSum = (repulsiveDisplacements ++ attractiveDisplacements).groupBy(_._1) map {
-                case (key, value) => key -> (value map(_._2) reduce (_ + _))
-            }
-
-            val newVertices = displacementsSum map {
-                case (key, value) => vertices(key) + value * c4
-            } toList
-
-            run(iteration - 1, allPairs, edges, newVertices)
-        }
-    }
 
     // Parallel version
     def runSpark(sc: SparkContext, iterations: Int, inFilePath: String, outFilePath: String) {
@@ -138,47 +97,58 @@ object SPRING {
         Pajek.dump(new Graph(normVertices, parsedGraph.edges), outFilePath)
     }
 
-    /* def main(args: Array[String]) {
-        val maxIter = 100
+    def main(args: Array[String]) {
+
+        val maxIter = 1000
         val graph = Pajek.parse(args(0))
         val vertexNum = graph.vertices.size
         
-        val vertices = (0 until vertexNum) map (_ => new Point2()) toList
-        val allPairs = (
-            for (
-                x <- 0 until vertexNum; 
-                y <- 0 until vertexNum if x != y
-            ) yield (x, y)
-        ) toList
+        val edges = graph.edges
+        
+        import scala.collection.mutable.ListBuffer
+        var vertices: Array[(Double, Double)] = new Array(vertexNum)
 
-        val layoutedVertices = run(maxIter, allPairs, graph.edges, vertices)
+        for (i <- 0 until vertexNum) {
+            vertices(i) = ((Math.random, Math.random))
+        }
+
+        for (i <- 0 to maxIter) {
+            val t0 = System.currentTimeMillis()
+            // Repulsive forces iteration
+            for (
+                v <- 0 until (vertexNum - 1);
+                u <- (v + 1) until vertexNum
+            ) {
+                // repulsiveForce force
+                // if you have a vector (v - u) (i.e. u -> v) then the repulsiveForce force adds to v and substracts to u ???
+                var distance = ((vertices(v)._1 - vertices(u)._1), (vertices(v)._2 - vertices(u)._2))
+                var length = Math.sqrt(Math.pow(distance._1, 2) + Math.pow(distance._2, 2))
+                var repulsive = repulsiveForce(length) * c4
+                var displacement = (distance._1 / length * repulsive, distance._2 / length * repulsive)
+                vertices(v) = (vertices(v)._1 + displacement._1, vertices(v)._2 + displacement._2)
+                vertices(u) = (vertices(u)._1 - displacement._1, vertices(u)._2 - displacement._2)
+            }
+
+            // Attractive forces iteration
+            for ((v, u) <- edges) {
+                var distance = ((vertices(v - 1)._1 - vertices(u - 1)._1), (vertices(v - 1)._2 - vertices(u - 1)._2))
+                var length = Math.sqrt(Math.pow(distance._1, 2) + Math.pow(distance._2, 2))
+                var attractive = attractiveForce(length) * c4
+                var displacement = (distance._1 / length * attractive, distance._2 / length * attractive)
+                vertices(v - 1) = (vertices(v - 1)._1 - displacement._1, vertices(v - 1)._2 - displacement._2)
+                vertices(u - 1) = (vertices(u - 1)._1 + displacement._1, vertices(u - 1)._2 + displacement._2)
+            }
+    
+            val t1 = System.currentTimeMillis()
+            //println(s"iteration $i took ${t1 - t0}ms")
+        }
+        
+        val layoutedVertices = (0 until vertexNum) map {
+            case i => new Point2(vertices(i)._1, vertices(i)._2)
+        } toList
+
         val (maxX, maxY) = ((layoutedVertices map(_.x)) max, (layoutedVertices map(_.y)) max)
         val layoutedNorm = layoutedVertices map (p => new Point2(p.x/maxX * width, p.y/maxY * length))
-
-        Pajek.dump(new Graph(layoutedNorm, graph.edges), args(1))
-
-        // Sequential and mutable SPRING
-        var vertices = (0 to vertexNum) map (_ => new Point2()) toList
-        for (_ <- 0 to maxIter) {
-            for (
-                u <- 0 to vertexNum;
-                v <- (u + 1) to vertexNum if (u != v)
-            ) {
-                val distance = (vertices(v) - vertices(u)).abs()
-                if (edges contains (v, u)) {
-                    // attractiveForce force between v and u
-                    // if you have a vector (v - u) (i.e. u -> v) then the attractiveForce force adds to u and substracts to v ???
-                    val attractive = attractiveForce(distance * c4)
-                    vertices(v) = vertices(v).shift(-attractive.x, -attractive.y) 
-                    vertices(u) = vertices(u).shift(attractive.x, attractive.y)
-                } else {
-                    // repulsiveForce force
-                    // if you have a vector (v - u) (i.e. u -> v) then the repulsiveForce force adds to v and substracts to u ???
-                    val repulsive = repulsiveForce(distance * c4)
-                    vertices(v) = vertices(v).shift(repulsive.x, repulsive.y)
-                    vertices(u) = vertices(u).shift(-repulsive.x, -repulsive.y)
-                }
-            }
-        }
-    } */
+        Pajek.dump(new Graph(layoutedNorm, graph.edges), args(1)) 
+    }
 }
