@@ -13,50 +13,56 @@ object ForceAtlas2 {
     val edgeWeightInfluence = 0
     val gravity = 1.0
     val jitterTolerance = 1
-    val scalingRatio = 2.0
+//    val scalingRatio = 2.0
     val adjustSizes = false
     val barnesHutOptimize = false
     val linLogMode = false
     val strongGravityMode = false
-    val outboundAttractionDistribution = false
-    // It should be the average node mass, but in our case it is always 1
-    val outboundAttractionCompensation = 1
+    val outboundAttractionDistribution = true
 
-    def repulsiveForce(v1: FANode, v2: FANode, coefficient: Double): (Vec2, Vec2) = {
-        val distance: Double = (v1.pos - v2.pos).length
-        val factor: Double =
-            if (distance > 0)
-                coefficient * v1.mass * v2.mass / distance
-                // coefficient * nodeMass * nodeMass / distance / distance
-            else
-                100 * v1.mass * v2.mass
-        (v1.pos.toVec * factor, -v2.pos.toVec * factor)
+    def repulsiveForce(v1: FANode, v2: FANode, coefficient: Double = 1): (Vec2, Vec2) = {
+        val distanceVector = v1.pos - v2.pos
+        val distanceLength: Double = distanceVector.length
+        if (distanceLength > 0) {
+            val factor: Double =
+//                coefficient * v1.mass * v2.mass / distanceLength
+                coefficient * v1.mass * v2.mass / distanceLength / distanceLength
+            (distanceVector * factor, -distanceVector * factor)
+        } else {
+            (Vec2.zero, Vec2.zero)
+        }
     }
 
-    def attractiveForce(source: FANode, target: FANode): (Vec2, Vec2) = {
-        val distance: Double = (source.pos - target.pos).length
+    def attractiveForce(source: FANode, target: FANode, outboundAttractionCompensation: Double): (Vec2, Vec2) = {
+        val distance = source.pos - target.pos
         val edgeWeight: Double = 1.0
         val factor = (linLogMode, outboundAttractionDistribution) match {
-            case (true, true) =>
-                -outboundAttractionCompensation * edgeWeight * Math.log(1 + distance) / distance / source.mass
-            case (true, false) =>
-                -outboundAttractionCompensation * edgeWeight * Math.log(1 + distance) / distance
+//            case (true, true) =>
+//                -outboundAttractionCompensation * edgeWeight * Math.log(1 + distanceLength) / distanceLength / source.mass
+//            case (true, false) =>
+//                -outboundAttractionCompensation * edgeWeight * Math.log(1 + distanceLength) / distanceLength
             case (false, true) =>
                 -outboundAttractionCompensation * edgeWeight / source.mass
             case (false, false) =>
                 -outboundAttractionCompensation * edgeWeight
+            case _ => throw new NotImplementedError("Linlog mode is not implemented yet")
         }
-        (source.pos.toVec * factor, -target.pos.toVec * factor)
+        (distance * factor, -distance * factor)
     }
 
     def gravityForce(v: FANode): Vec2 = {
-        val distanceFromOrigin: Double = v.pos.toVec.length
-        val factor: Double =
-            if (strongGravityMode)
-                scalingRatio * v.mass * (gravity / scalingRatio)
-            else
-                scalingRatio * v.mass * (gravity / scalingRatio) / distanceFromOrigin
-        -v.pos.toVec * factor
+        val distanceFromOriginVector = v.pos.toVec
+        val distanceFromOriginLength: Double = v.pos.toVec.length
+        if (distanceFromOriginLength > 0) {
+            val factor: Double =
+                if (strongGravityMode)
+                    v.mass * gravity
+                else
+                    v.mass * gravity / distanceFromOriginLength
+            -distanceFromOriginVector * factor
+        } else {
+            Vec2.zero
+        }
     }
 
     def runMutable(iterations: Int, inFilePath: String, outFilePath: String) {
@@ -78,11 +84,12 @@ object ForceAtlas2 {
         var speed = 1.0
         var speedEfficiency = 1.0
 
-        val verticesCouples =
-            for {
-                i <- graph.vertices.indices
-                j <- i + 1 until graph.vertices.length
-            } yield (i, j)
+        val outboundAttractionCompensation =
+            if (outboundAttractionDistribution) {
+                graph.vertices.map(v => v.mass).sum / graph.vertices.length
+            } else {
+                1.0
+            }
 
         for (iteration <- 0 until iterations) {
             val t0 = System.currentTimeMillis()
@@ -92,28 +99,26 @@ object ForceAtlas2 {
                 nodesDx(i) = Vec2.zero
             }
 
-            verticesCouples.foreach {
-                case (index1, index2) =>
-                    val (d1, d2) = repulsiveForce(graph.vertices(index1), graph.vertices(index2), scalingRatio)
-                    nodesDx(index1) = nodesDx(index1) + d1
-                    nodesDx(index2) = nodesDx(index2) + d2
+            for (
+                i <- graph.vertices.indices;
+                j <- i + 1 until graph.vertices.length
+            ) {
+                val (d1, d2) = repulsiveForce(graph.vertices(i), graph.vertices(j))
+                nodesDx(i) = nodesDx(i) + d1
+                nodesDx(j) = nodesDx(j) + d2
             }
 
-            println()
             for (i <- graph.vertices.indices) {
                 val displacement = gravityForce(graph.vertices(i))
                 nodesDx(i) = nodesDx(i) + displacement
             }
 
-            println()
             graph.edges.foreach {
                 case (index1, index2) =>
-                    val (d1, d2) = attractiveForce(graph.vertices(index1 - 1), graph.vertices(index2 - 1))
+                    val (d1, d2) = attractiveForce(graph.vertices(index1 - 1), graph.vertices(index2 - 1), outboundAttractionCompensation)
                     nodesDx(index1 - 1) = nodesDx(index1 - 1) + d1
                     nodesDx(index2 - 1) = nodesDx(index2 - 1) + d2
             }
-
-            println()
 
             // Auto adjust speed
             var totalSwinging = 0.0             // How much irregular movement
@@ -151,6 +156,8 @@ object ForceAtlas2 {
 
             val targetSpeed = (jitter * speedEfficiency * totalEffectiveTraction) / totalSwinging
 
+            // Speed efficiency is how the speed really corresponds to the swinging vs. convergence tradeoff
+            // We adjust it slowly and carefully
             if (totalSwinging > jitter * totalEffectiveTraction) {
                 if (speedEfficiency > minSpeedEfficiency) {
                     speedEfficiency = speedEfficiency * 0.7
@@ -168,7 +175,7 @@ object ForceAtlas2 {
                 // Adaptive auto-speed: the speed of each node is lowered
                 // when the node swings.
                 val swinging = graph.vertices(i).mass * (nodesOldDx(i) - nodesDx(i)).length
-                val factor = speed / (1 + Math.sqrt(speed * swinging))
+                val factor = speed / (1.0 + Math.sqrt(speed * swinging))
                 graph.vertices(i).pos = graph.vertices(i).pos + (nodesDx(i) * factor)
             }
 
