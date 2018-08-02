@@ -10,14 +10,12 @@ import org.apache.spark.rdd.RDD
 
 object SPRING {
     // original uses c1 = 2, c2 = 1, c3 = 1, c4 = 0.1, and M = 100
-    val (c1, c2, c3, c4) = (2.0, 1.0, 1.0, 0.01)
+    val (c1, c2, c3, c4) = (4.0, 1.0, 2.0, 0.01)
     val (width, length) = (1000, 1000)
 
     // Algorithm forces
     def attractiveForce(d: Double) = c1 * math.log((d + 0.0001) / c2)
     def repulsiveForce(d: Double) = c3 / (math.sqrt(d) + 0.0001)
-    def attractiveForce(d: Vec2) = new Point2(math.log((d.x + 0.0001) / c2), math.log((d.y + 0.0001) / c2)) * c1
-    def repulsiveForce(d: Vec2) = new Point2(1.0/(math.sqrt(d.x) + 0.0001), 1.0/(math.sqrt(d.y) + 0.0001)) * c3
 
     // Parallel version
     def runSpark(sc: SparkContext, iterations: Int, inFilePath: String, outFilePath: String) {
@@ -97,9 +95,13 @@ object SPRING {
         Pajek.dump(new Graph(normVertices, parsedGraph.edges), outFilePath)
     }
 
+    def setup(sc: SparkContext, iterations: Int, inFilePath: String, outFilePath: String) = {
+
+    }
+
     def main(args: Array[String]) {
 
-        val maxIter = 2000
+        val maxIter = 1000
         val graph = Pajek.parse(args(0))
         val vertexNum = graph.vertices.size
         
@@ -112,14 +114,8 @@ object SPRING {
             vertices(i) = ((Math.random, Math.random))
         }
 
-        var distance = (0.0, 0.0)
-        var displacement = (0.0, 0.0)
-        var length = 0.0
-
         for (i <- 0 to maxIter) {
             val t0 = System.currentTimeMillis()
-            var normDistance = (0.0, 0.0)
-            var repulsive = 0.0
             // Repulsive forces iteration
             for (
                 v <- 0 until (vertexNum - 1);
@@ -127,25 +123,26 @@ object SPRING {
             ) {
                 // repulsiveForce force
                 // if you have a vector (v - u) (i.e. u -> v) then the repulsiveForce force adds to v and substracts to u ???
-                distance = ((vertices(v)._1 - vertices(u)._1), (vertices(v)._2 - vertices(u)._2))
-                length = Math.sqrt(Math.pow(distance._1, 2) + Math.pow(distance._2, 2))
-                normDistance = (distance._1 / length, distance._2 / length)
+                val distance = ((vertices(v)._1 - vertices(u)._1), (vertices(v)._2 - vertices(u)._2))
+                val length = Math.sqrt(Math.pow(distance._1, 2) + Math.pow(distance._2, 2))
+                val normDistance = (distance._1 / length, distance._2 / length)
 
-                repulsive = repulsiveForce(length) * c4
-                displacement = (normDistance._1 * repulsive, normDistance._2 * repulsive)
+                val repulsive = repulsiveForce(length) * c4
+
+                val displacement = (normDistance._1 * repulsive, normDistance._2 * repulsive)
                 vertices(v) = (vertices(v)._1 + displacement._1, vertices(v)._2 + displacement._2)
                 vertices(u) = (vertices(u)._1 - displacement._1, vertices(u)._2 - displacement._2)
             }
 
             // Attractive forces iteration
-            var attractive = 0.0
             for ((v, u) <- edges) {
-                distance = ((vertices(v - 1)._1 - vertices(u - 1)._1), (vertices(v - 1)._2 - vertices(u - 1)._2))
-                length = Math.sqrt(Math.pow(distance._1, 2) + Math.pow(distance._2, 2))
+                val distance = ((vertices(v - 1)._1 - vertices(u - 1)._1), (vertices(v - 1)._2 - vertices(u - 1)._2))
+                val length = Math.sqrt(Math.pow(distance._1, 2) + Math.pow(distance._2, 2))
+                val normDistance = (distance._1 / length, distance._2 / length)
 
-                attractive = attractiveForce(length) * c4
+                val attractive = attractiveForce(length) * c4
 
-                displacement = (distance._1 * attractive, distance._2 * attractive)
+                val displacement = (normDistance._1 * attractive, normDistance._2 * attractive)
                 vertices(v - 1) = (vertices(v - 1)._1 - displacement._1, vertices(v - 1)._2 - displacement._2)
                 vertices(u - 1) = (vertices(u - 1)._1 + displacement._1, vertices(u - 1)._2 + displacement._2)
             }
