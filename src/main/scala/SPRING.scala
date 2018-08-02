@@ -174,7 +174,7 @@ object SPRING extends LogMeBabyOneMoreTime {
         println(maxY)
         //val normVertices = (vertices map (v => new Point2(v._2.x/maxX * width, v._2.y/maxY * length)) collect).toList
         Pajek.dump(Graph.fromSpark(graph mapVertices {
-            case (id, pos) => new Point2(pos.x/maxX, pos.y/maxY)
+            case (id, pos) => new Point2(pos.x/maxX * width, pos.y/maxY * length)
         }), outFilePath)
     }
 
