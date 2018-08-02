@@ -5,6 +5,7 @@
 
 import org.apache.spark._
 import org.apache.spark.graphx.{Graph => XGraph, Edge, VertexId}
+import org.apache.spark.graphx.EdgeTriplet
 import org.apache.spark.rdd.RDD
 
 object SPRING {
@@ -12,6 +13,7 @@ object SPRING {
     val (c1, c2, c3, c4) = (2.0, 1.0, 1.0, 0.01)
     val (width, length) = (10000, 10000)
 
+    // Algorithm forces
     def attractiveForce(d: Double) = c1 * math.log((d + 0.0001) / c2)
     def repulsiveForce(d: Double) = c3 / (math.sqrt(d) + 0.0001)
     def attractiveForce(d: Vec2) = new Point2(math.log((d.x + 0.0001) / c2), math.log((d.y + 0.0001) / c2)) * c1
@@ -80,8 +82,6 @@ object SPRING {
         val computedGraph = (0 until iterations).foldLeft(initialGraph) { (graph, i) =>
             val t0 = System.currentTimeMillis()
             val repulsionDisplacements: RDD[(VertexId, Vec2)] = graph.vertices
-
-                // Generate every possible node pairs
                 .cartesian(graph.vertices)
                 // Remove the pairs having the same ID
                 .filter {

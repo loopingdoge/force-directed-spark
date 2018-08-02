@@ -5,6 +5,12 @@ import scala.reflect.ClassTag
 class Graph[T] (val vertices: List[T], val edges: List[(Int, Int)]) {
     def map[U](f: T => U): Graph[U] = new Graph(vertices.map(f), edges)
     def map[U](f: (T, Int) => U): Graph[U] = new Graph(vertices.zipWithIndex.map { case (v, i) => f(v, i) }, edges)
+    def incidents[T](vIndex: Int): List[Int] = {
+        edges
+            .filter( (e: (Int, Int)) => e._1 == vIndex || e._2 == vIndex )
+            .map( (e: (Int, Int)) => if (e._1 == vIndex) e._2 else e._1 )
+            .distinct
+    }
 }
 
 object Graph {
