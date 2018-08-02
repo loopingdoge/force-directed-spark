@@ -28,7 +28,17 @@ object Main {
         val (_, calcTime) = time {
             algorightmToRun match {
                 case "FR" => FruchtermanReingold.runSpark(sc, 500, inFilePath, outFilePath)
-                case "SPRING" => SPRING.runSpark(sc, 500, inFilePath, outFilePath)
+                case "SPRING" => 
+                    var graph = SPRING.start(sc, inFilePath)
+                    for (i <- 0 until 100) {
+                        val t0 = System.currentTimeMillis()
+                        graph = SPRING.run(i, graph)
+                        val t1 = System.currentTimeMillis()
+                        println(s"iteration $i took ${t1 - t0}ms")
+                    }
+                    SPRING.end(graph, outFilePath)
+
+                    //SPRING.runSpark(sc, 500, inFilePath, outFilePath)
             }
         }
 
