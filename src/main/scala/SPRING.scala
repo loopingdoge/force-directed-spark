@@ -95,7 +95,7 @@ object SPRING extends Layouter {
         Pajek.dump(new ImmutableGraph(normVertices, parsedGraph.edges), outFilePath)
     }
 
-    def start(sc: SparkContext, inFilePath: String): Graph[Point2] = {
+    def start(sc: SparkContext, inFilePath: String, iterations: Int): Graph[Point2] = {
         val parsedGraph = Pajek.parse(inFilePath) map { _ => new Point2() }
 
         // Create the spark graph
