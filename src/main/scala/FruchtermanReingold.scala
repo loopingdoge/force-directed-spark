@@ -192,6 +192,7 @@ object FruchtermanReingoldSpark extends Layouter[SparkGraph] {
     private val area = width * length
     private var k: Double = 0.0
     private var iterations: Int = 0
+    private var nodePairs: RDD[((VertexId, Point2), (VertexId, Point2))] = _
 
     private def repulsiveForce(k: Double, x: Double) = FruchtermanReingoldUtils.repulsiveForce(k, x)
     private def attractiveForce(k: Double, x: Double) = FruchtermanReingoldUtils.attractiveForce(k, x)
@@ -218,6 +219,15 @@ object FruchtermanReingoldSpark extends Layouter[SparkGraph] {
         this.k = Math.sqrt(area / initialGraph.numVertices) // Optimal pairwise distance
         this.iterations = iterations
 
+        this.nodePairs = initialGraph.vertices
+            // Generate every possible node pairs
+            .cartesian(initialGraph.vertices)
+            // Remove the pairs having the same ID
+            .filter {
+                case ((id1, _), (id2, _)) => id1 != id2
+            }
+            .cache()
+
         new SparkGraph[Point2](initialGraph)
     }
 
@@ -226,14 +236,8 @@ object FruchtermanReingoldSpark extends Layouter[SparkGraph] {
         val t0 = System.currentTimeMillis()
         val t = temperature(i, iterations)
 
-        val repulsionDisplacements: RDD[(VertexId, Vec2)] = graph.vertices
-            // Generate every possible node pairs
-            .cartesian(graph.vertices)
-            // Remove the pairs having the same ID
-            .filter {
-                case ((id1, _), (id2, _)) if id1 == id2 => false
-                case _ => true
-            }
+        val repulsionDisplacements: RDD[(VertexId, Vec2)] =
+            this.nodePairs
             // Calculate the displacement for every pair
             .map {
                 case ((id1, pos1), (id2, pos2)) =>
@@ -289,9 +293,5 @@ object FruchtermanReingoldSpark extends Layouter[SparkGraph] {
         }
         Pajek.dump(ImmutableGraph.fromSpark(graph), outFilePath)
     }
-//    override def start[T <: Graph[Point2]](sc: SparkContext, inFilePath: String, iterations: Int): T = ???
-//
-//    override def run[T <: Graph[Point2]](iteration: Int, graph: T): T = ???
-//
-//    override def end[T <: Graph[Point2]](graph: T, outFilePath: String): Unit = ???
+
 }
