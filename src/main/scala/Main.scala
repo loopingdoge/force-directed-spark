@@ -1,6 +1,8 @@
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.SparkContext
 
 object Main {
+    // TODO: aggiungere data structure per serie ottenuta da log
 
     def time[R](block: => R): (R, Long) = {
         val t0 = System.currentTimeMillis()
@@ -10,7 +12,7 @@ object Main {
     }
 
     def main(args: Array[String]) {
-        val algorightmToRun = args(0)
+        val algorithmToRun = args(0)
         val inFilePath = args(1)
         val outFilePath = args(2)
 
@@ -25,8 +27,8 @@ object Main {
         sc.setLogLevel("ERROR")
         sc.setCheckpointDir("out/checkpoint/")
 
-        val (_, calcTime) = time {
-            algorightmToRun match {
+        /* val (_, calcTime) = time {
+            algorithmToRun match {
                 case "FR" => FruchtermanReingold.runSpark(sc, 500, inFilePath, outFilePath)
                 case "SPRING" => 
                     var graph = SPRING.start(sc, inFilePath)
@@ -40,10 +42,28 @@ object Main {
 
                     //SPRING.runSpark(sc, 500, inFilePath, outFilePath)
             }
-        }
+        } */
 
-        println(s"Elapsed time: $calcTime ms")
+        println("$algorithmToRun is firing up! Set, ready, go! OwO")
+        algorithmToRun match {
+            case "SPRING" => log(SPRING, sc, 100, inFilePath, outFilePath)
+            case name => println(s"$name not recognized")
+        }
+        println("$algorithmToRun has ended! I hope you liked it senpai ≧ω≦")
+
+        // println(s"Elapsed time: $calcTime ms")
 
         spark.stop()
+    }
+
+    def log[A <: Layouter](algorithm: A, sc: SparkContext, iterations: Int, inFilePath: String, outFilePath: String) {
+        var graph = algorithm.start(sc, inFilePath)
+        for (i <- 0 until iterations) {
+            val (_, calcTime) = time {
+                graph = algorithm.run(i, graph)
+            }
+            // aggiungi calcTime alla serie
+        }
+        algorithm.end(graph, outFilePath)
     }
 }
