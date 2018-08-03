@@ -65,20 +65,32 @@ object Main {
         println("\n")
         println(s"$algorithmToRun is firing up! Set, ready, go! OwO\n")
         algorithmToRun match {
-            case "SPRING" => log(SPRING, sc, 5, inFilePath, outFilePath)
+//            case "SPRING" =>    log[SparkGraph, SPRING](SPRING, sc, 5, inFilePath, outFilePath)
+            case "FR-M" =>      log[MutableGraph, FruchtermanReingoldMutable.type](FruchtermanReingoldMutable, sc, 5, inFilePath, outFilePath)
+            case "FR-S" =>      log[SparkGraph, FruchtermanReingoldSpark.type](FruchtermanReingoldSpark, sc, 5, inFilePath, outFilePath)
             case name => println(s"$name not recognized")
         }
         println("\n")
         println(s"$algorithmToRun has ended! I hope you liked it senpai ≧ω≦\n")
 
-        dump("out/timings.csv")
+        val filename =
+            if (inFilePath.contains("/") && inFilePath.lastIndexOf("/") != inFilePath.length - 1) {
+                val withoutSlash = inFilePath
+                    .substring(inFilePath.lastIndexOf("/") + 1)
+                withoutSlash.substring(0, withoutSlash.lastIndexOf("."))
+            } else {
+                inFilePath
+                    .substring(0, inFilePath.lastIndexOf("."))
+            }
+
+        dump(s"out/timings-$algorithmToRun-$filename.csv")
 
         // println(s"Elapsed time: $calcTime ms")
 
         spark.stop()
     }
 
-    def log[A <: Layouter](algorithm: A, sc: SparkContext, iterations: Int, inFilePath: String, outFilePath: String) {
+    def log[T[Point2] <: Graph[Point2], A <: Layouter[T]](algorithm: A, sc: SparkContext, iterations: Int, inFilePath: String, outFilePath: String) {
         var graph = algorithm.start(sc, inFilePath, iterations)
         for (i <- 0 until iterations) {
             val (_, calcTime) = time {

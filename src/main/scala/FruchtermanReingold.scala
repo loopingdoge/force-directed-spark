@@ -23,7 +23,7 @@ object FruchtermanReingoldUtils {
     }
 }
 
-object FruchtermanReingoldMutable extends Layouter {
+object FruchtermanReingoldMutable extends Layouter[MutableGraph] {
 
     class FRNode(var pos: Point2, var displacement: Vec2)
 
@@ -129,7 +129,7 @@ object FruchtermanReingoldMutable extends Layouter {
 
     }
 
-    override def start(sc: SparkContext, inFilePath: String, iterations: Int): Graph[Point2] = {
+    override def start(sc: SparkContext, inFilePath: String, iterations: Int): MutableGraph[Point2] = {
         // Place vertices at random
         val parsedGraph = Pajek.parse(inFilePath)
             .map { _ => new Point2(Math.random() * width, Math.random() * length) }
@@ -143,23 +143,16 @@ object FruchtermanReingoldMutable extends Layouter {
         new MutableGraph[Point2](initialGraph.vertices, initialGraph.edges)
     }
 
-    override def run(i: Int, g: Graph[Point2]): Graph[Point2] = {
-        val (vertices, edges) = g match {
-            case MutableGraph(v, e) => (v.map(pos => new FRNode(pos, Vec2.zero)), e)
-            case _ => throw new IllegalArgumentException
-        }
+    override def run(i: Int, g: MutableGraph[Point2]): MutableGraph[Point2] = {
+        val (vertices, edges) = (g.vertices.map(pos => new FRNode(pos, Vec2.zero)), g.edges)
 
-        val t0 = System.currentTimeMillis()
         val t = temperature(i, iterations)
 
         for (v <- vertices) {
             v.displacement = Vec2.zero
         }
 
-        for (
-            i <- 0 to vertices.length;
-            j <- 0 to vertices.length
-        ) {
+        for (i <- vertices.indices; j <- vertices.indices) {
             if (i != j) {
                 val (v1, v2) = (vertices(i), vertices(j))
                 val delta = v1.pos - v2.pos
@@ -169,20 +162,20 @@ object FruchtermanReingoldMutable extends Layouter {
         }
 
         for ((v1Index, v2Index) <- edges) {
-            val delta = vertices(v1Index).pos - vertices(v2Index).pos
+            val delta = vertices(v1Index - 1).pos - vertices(v2Index - 1).pos
             val displacement = delta.normalize * attractiveForce(k, delta.length)
-            vertices(v1Index).displacement -= displacement
-            vertices(v2Index).displacement += displacement
+            vertices(v1Index - 1).displacement -= displacement
+            vertices(v2Index - 1).displacement += displacement
         }
 
         for (v <- vertices) {
-            v.pos += v.displacement.length * Math.min(t, v.displacement.length)
+            v.pos += v.displacement.normalize * Math.min(t, v.displacement.length)
         }
 
         new MutableGraph[Point2](vertices.map(v => v.pos), edges)
     }
 
-    override def end(g: Graph[Point2], outFilePath: String): Unit = {
+    override def end(g: MutableGraph[Point2], outFilePath: String): Unit = {
         val graph = g match {
             case MutableGraph(vertices, edges) => new MutableGraph(vertices, edges)
             case _ => throw new IllegalArgumentException
@@ -191,7 +184,7 @@ object FruchtermanReingoldMutable extends Layouter {
     }
 }
 
-object FruchtermanReingoldSpark extends Layouter {
+object FruchtermanReingoldSpark extends Layouter[SparkGraph] {
     private val width = FruchtermanReingoldUtils.width
     private val length = FruchtermanReingoldUtils.length
     private val initialTemperature = FruchtermanReingoldUtils.initialTemperature
@@ -204,7 +197,7 @@ object FruchtermanReingoldSpark extends Layouter {
     private def attractiveForce(k: Double, x: Double) = FruchtermanReingoldUtils.attractiveForce(k, x)
     private def temperature(currIter: Int, maxIter: Int) = FruchtermanReingoldUtils.temperature(currIter, maxIter)
 
-    override def start(sc: SparkContext, inFilePath: String, iterations: Int): Graph[Point2] = {
+    override def start (sc: SparkContext, inFilePath: String, iterations: Int): SparkGraph[Point2] = {
         // Place vertices at random
         val parsedGraph = Pajek.parse(inFilePath)
             .map { _ => new Point2(Math.random() * width, Math.random() * length) }
@@ -228,11 +221,8 @@ object FruchtermanReingoldSpark extends Layouter {
         new SparkGraph[Point2](initialGraph)
     }
 
-    override def run(i: Int, g: Graph[Point2]): Graph[Point2] = {
-        val graph: XGraph[Point2, Null] = g match {
-            case SparkGraph(graph: XGraph[Point2, Null]) => graph
-            case _ => throw new IllegalArgumentException
-        }
+    override def run (i: Int, g: SparkGraph[Point2]): SparkGraph[Point2] = {
+        val graph = g.graph
         val t0 = System.currentTimeMillis()
         val t = temperature(i, iterations)
 
@@ -292,11 +282,16 @@ object FruchtermanReingoldSpark extends Layouter {
         new SparkGraph[Point2](modifiedGraph)
     }
 
-    override def end(g: Graph[Point2], outFilePath: String): Unit = {
+    override def end(g: SparkGraph[Point2], outFilePath: String): Unit = {
         val graph = g match {
             case SparkGraph(graph: XGraph[Point2, Null]) => graph
             case _ => throw new IllegalArgumentException
         }
         Pajek.dump(ImmutableGraph.fromSpark(graph), outFilePath)
     }
+//    override def start[T <: Graph[Point2]](sc: SparkContext, inFilePath: String, iterations: Int): T = ???
+//
+//    override def run[T <: Graph[Point2]](iteration: Int, graph: T): T = ???
+//
+//    override def end[T <: Graph[Point2]](graph: T, outFilePath: String): Unit = ???
 }
