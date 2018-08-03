@@ -65,11 +65,11 @@ object Main {
         println("\n")
         println(s"$algorithmToRun is firing up! Set, ready, go! OwO\n")
         algorithmToRun match {
-            case "SPRING" => log(SPRING, sc, 5, inFilePath, outFilePath)
+            case "SPRING" => log(SPRINGMutable, sc, 5, inFilePath, outFilePath)
             case name => println(s"$name not recognized")
         }
         println("\n")
-        println(s"$algorithmToRun has ended! I hope you liked it senpai ≧ω≦\n")
+        println(s"$algorithmToRun has ended! I hope you liked it senpai UmU\n")
 
         dump("out/timings.csv")
 
