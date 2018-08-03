@@ -75,7 +75,7 @@ object Main {
         println(s"$algorithmToRun has ended! I hope you liked it senpai UmU\n")
 
         val filename =
-            if (inFilePath.contains("/") && inFilePath.lastIndexOf("/") != inFilePath.length - 1) {
+            if (inFilePath.contains("/") && inFilePath.lastIndexOf("/") != inFilePath.length) {
                 val withoutSlash = inFilePath
                     .substring(inFilePath.lastIndexOf("/") + 1)
                 withoutSlash.substring(0, withoutSlash.lastIndexOf("."))
