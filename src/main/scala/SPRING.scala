@@ -8,7 +8,7 @@ import org.apache.spark.graphx.{Graph => XGraph, Edge, VertexId}
 import org.apache.spark.graphx.EdgeTriplet
 import org.apache.spark.rdd.RDD
 
-object SPRING extends LogMeBabyOneMoreTime {
+object SPRING extends Layouter {
     // original uses c1 = 2, c2 = 1, c3 = 1, c4 = 0.1, and M = 100
     val (c1, c2, c3, c4) = (4.0, 1.0, 2.0, 0.01)
     val (width, length) = (1000, 1000)
@@ -92,10 +92,10 @@ object SPRING extends LogMeBabyOneMoreTime {
         val vertices = computedGraph.vertices
         val (maxX, maxY) = ((vertices map(_._2.x)) max, (vertices map(_._2.y)) max)
         val normVertices = (vertices map (v => new Point2(v._2.x/maxX * width, v._2.y/maxY * length)) collect).toList
-        Pajek.dump(new Graph(normVertices, parsedGraph.edges), outFilePath)
+        Pajek.dump(new ImmutableGraph(normVertices, parsedGraph.edges), outFilePath)
     }
 
-    def start(sc: SparkContext, inFilePath: String): XGraph[Point2, Null] = {
+    def start(sc: SparkContext, inFilePath: String): Graph[Point2] = {
         val parsedGraph = Pajek.parse(inFilePath) map { _ => new Point2() }
 
         // Create the spark graph
@@ -110,10 +110,17 @@ object SPRING extends LogMeBabyOneMoreTime {
                     .map { case (u, v) => Edge(u, v, null) }
             )
         )
-        return initialGraph
+
+        new SparkGraph[Point2](initialGraph)
     }
 
-    def run(iteration: Int, graph: XGraph[Point2, Null]): XGraph[Point2, Null] = {
+    def run(iteration: Int, g: Graph[Point2]): Graph[Point2] = {
+
+        val graph: XGraph[Point2, Null] = g match {
+            case SparkGraph(graph: XGraph[Point2, Null]) => graph
+            case _ => throw new IllegalArgumentException
+        }
+
         val repulsionDisplacements: RDD[(VertexId, Vec2)] = graph.vertices
         .cartesian(graph.vertices)
         // Remove the pairs having the same ID
@@ -160,10 +167,10 @@ object SPRING extends LogMeBabyOneMoreTime {
 
         //modifiedGraph.vertices.foreach(println)
         modifiedGraph.checkpoint
-        return modifiedGraph
+        new SparkGraph[Point2](modifiedGraph)
     }
 
-    def end(graph: XGraph[Point2, Null], outFilePath: String) {
+    def end(graph: Graph[Point2], outFilePath: String) {
         val maxX = ((graph.vertices.collect map {
             case (id, pos) => pos.x
         }) max)
@@ -173,7 +180,7 @@ object SPRING extends LogMeBabyOneMoreTime {
         println(maxX)
         println(maxY)
         //val normVertices = (vertices map (v => new Point2(v._2.x/maxX * width, v._2.y/maxY * length)) collect).toList
-        Pajek.dump(Graph.fromSpark(graph mapVertices {
+        Pajek.dump(ImmutableGraph.fromSpark(graph mapVertices {
             case (id, pos) => new Point2(pos.x/maxX * width, pos.y/maxY * length)
         }), outFilePath)
     }
@@ -236,6 +243,6 @@ object SPRING extends LogMeBabyOneMoreTime {
 
         val (maxX, maxY) = ((layoutedVertices map(_.x)) max, (layoutedVertices map(_.y)) max)
         val layoutedNorm = layoutedVertices map (p => new Point2(p.x/maxX * width, p.y/maxY * length))
-        Pajek.dump(new Graph(layoutedNorm, graph.edges), args(1)) 
+        Pajek.dump(new ImmutableGraph(layoutedNorm, graph.edges), args(1))
     }
 }

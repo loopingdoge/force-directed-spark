@@ -12,7 +12,7 @@ object Pajek {
 //    val fs: FileSystem = new Path("gs://force-directed-bucket").getFileSystem(conf)
     val fs: FileSystem = FileSystem.get(conf)
 
-    def parse(fileName: String): Graph[Int] = {
+    def parse(fileName: String): ImmutableGraph[Int] = {
         val stream = fs.open(new Path(fileName))
         val lines = Source.fromInputStream(stream).getLines
         val nVertices = lines.next.split(" ")(1).toInt
@@ -20,10 +20,10 @@ object Pajek {
 
         if(lines.next != "*Edges") vertices.foreach(_ => lines.next)
         val edges = lines.map(line => line.split(" ")).map(splitted => Tuple2(splitted(0).toInt, splitted(1).toInt)).toList
-        new Graph(vertices, edges)
+        new ImmutableGraph(vertices, edges)
     }
 
-    def dump(graph: Graph[Point2], filepath: String): Unit = {
+    def dump(graph: ImmutableGraph[Point2], filepath: String): Unit = {
 
         def round(num: Double): Double = {
             BigDecimal(num).setScale(2, BigDecimal.RoundingMode.HALF_UP).toDouble

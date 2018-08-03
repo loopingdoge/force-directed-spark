@@ -44,7 +44,7 @@ object BaricenterDraw {
          }
          println(vPositions)
 
-         Pajek.dump(new Graph(vPositions, graph.edges), "out/3planar-17352v.net")
+         Pajek.dump(new ImmutableGraph(vPositions, graph.edges), "out/3planar-17352v.net")
 
      }
  }
