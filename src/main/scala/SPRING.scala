@@ -17,7 +17,7 @@ object SPRING extends Layouter {
     def attractiveForce(d: Double) = c1 * math.log((d + 0.0001) / c2)
     def repulsiveForce(d: Double) = c3 / (math.sqrt(d) + 0.0001)
 
-    // Parallel version
+    // Old parallel version
     def runSpark(sc: SparkContext, iterations: Int, inFilePath: String, outFilePath: String) {
         // Place vertices at random
         val parsedGraph = Pajek.parse(inFilePath) map { _ => new Point2() }
@@ -115,7 +115,6 @@ object SPRING extends Layouter {
     }
 
     def run(iteration: Int, g: Graph[Point2]): Graph[Point2] = {
-
         val graph: XGraph[Point2, Null] = g match {
             case SparkGraph(graph: XGraph[Point2, Null]) => graph
             case _ => throw new IllegalArgumentException
@@ -171,20 +170,24 @@ object SPRING extends Layouter {
     }
 
     def end(graph: Graph[Point2], outFilePath: String) {
-        val maxX = ((graph.vertices.collect map {
-            case (id, pos) => pos.x
-        }) max)
-        val maxY = ((graph.vertices.collect map {
-            case (id, pos) => pos.y
-        }) max)
-        println(maxX)
-        println(maxY)
-        //val normVertices = (vertices map (v => new Point2(v._2.x/maxX * width, v._2.y/maxY * length)) collect).toList
-        Pajek.dump(ImmutableGraph.fromSpark(graph mapVertices {
-            case (id, pos) => new Point2(pos.x/maxX * width, pos.y/maxY * length)
+        val xgraph: XGraph[Point2, Null] = graph match {
+            case SparkGraph(graph: XGraph[Point2, Null]) => graph
+            case _ => throw new IllegalArgumentException
+        }
+
+        val maxX = (xgraph.vertices.collect map {
+            case (_, pos) => pos.x
+        }) max
+        val maxY = (xgraph.vertices.collect map {
+            case (_, pos) => pos.y
+        }) max
+
+        Pajek.dump(ImmutableGraph.fromSpark(xgraph mapVertices {
+            case (_, pos) => new Point2(pos.x/maxX * width, pos.y/maxY * length)
         }), outFilePath)
     }
 
+    // TODO: move this to another object
     def niam(args: Array[String]) {
 
         val maxIter = 1000
@@ -193,11 +196,10 @@ object SPRING extends Layouter {
         
         val edges = graph.edges
         
-        import scala.collection.mutable.ListBuffer
         var vertices: Array[(Double, Double)] = new Array(vertexNum)
 
         for (i <- 0 until vertexNum) {
-            vertices(i) = ((Math.random, Math.random))
+            vertices(i) = (Math.random, Math.random)
         }
 
         for (i <- 0 to maxIter) {
@@ -209,7 +211,7 @@ object SPRING extends Layouter {
             ) {
                 // repulsiveForce force
                 // if you have a vector (v - u) (i.e. u -> v) then the repulsiveForce force adds to v and substracts to u ???
-                val distance = ((vertices(v)._1 - vertices(u)._1), (vertices(v)._2 - vertices(u)._2))
+                val distance = (vertices(v)._1 - vertices(u)._1, vertices(v)._2 - vertices(u)._2)
                 val length = Math.sqrt(Math.pow(distance._1, 2) + Math.pow(distance._2, 2))
                 val normDistance = (distance._1 / length, distance._2 / length)
 
@@ -222,7 +224,7 @@ object SPRING extends Layouter {
 
             // Attractive forces iteration
             for ((v, u) <- edges) {
-                val distance = ((vertices(v - 1)._1 - vertices(u - 1)._1), (vertices(v - 1)._2 - vertices(u - 1)._2))
+                val distance = (vertices(v - 1)._1 - vertices(u - 1)._1, vertices(v - 1)._2 - vertices(u - 1)._2)
                 val length = Math.sqrt(Math.pow(distance._1, 2) + Math.pow(distance._2, 2))
                 val normDistance = (distance._1 / length, distance._2 / length)
 
@@ -237,9 +239,7 @@ object SPRING extends Layouter {
             println(s"iteration $i took ${t1 - t0}ms")
         }
         
-        val layoutedVertices = (0 until vertexNum) map {
-            case i => new Point2(vertices(i)._1, vertices(i)._2)
-        } toList
+        val layoutedVertices = (0 until vertexNum) map (i => new Point2(vertices(i)._1, vertices(i)._2)) toList
 
         val (maxX, maxY) = ((layoutedVertices map(_.x)) max, (layoutedVertices map(_.y)) max)
         val layoutedNorm = layoutedVertices map (p => new Point2(p.x/maxX * width, p.y/maxY * length))
