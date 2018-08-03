@@ -35,7 +35,7 @@ object ImmutableGraph {
 }
 
 case class MutableGraph[T] (var vertices: Array[T], var edges: Array[(Int, Int)]) extends Graph[T] {
-    def map[U: ClassTag](f: T => U): MutableGraph[U] = new MutableGraph(vertices.map(f).toArray, edges)
+    def map[U: ClassTag](f: T => U): MutableGraph[U] = new MutableGraph(vertices.map(f), edges)
     def map[U: ClassTag](f: (T, Int) => U): MutableGraph[U] = new MutableGraph(vertices.zipWithIndex.map { case (v, i) => f(v, i) }, edges)
     def toImmutable: ImmutableGraph[T] =
         new ImmutableGraph(vertices.toList, edges.toList)
