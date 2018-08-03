@@ -44,12 +44,14 @@ object Main {
             }
         } */
 
-        println("$algorithmToRun is firing up! Set, ready, go! OwO")
+        println("\n")
+        println(s"$algorithmToRun is firing up! Set, ready, go! OwO\n")
         algorithmToRun match {
-            case "SPRING" => log(SPRING, sc, 100, inFilePath, outFilePath)
+            case "SPRING" => log(SPRING, sc, 1, inFilePath, outFilePath)
             case name => println(s"$name not recognized")
         }
-        println("$algorithmToRun has ended! I hope you liked it senpai ≧ω≦")
+        println("\n")
+        println(s"$algorithmToRun has ended! I hope you liked it senpai ≧ω≦\n")
 
         // println(s"Elapsed time: $calcTime ms")
 
@@ -57,12 +59,13 @@ object Main {
     }
 
     def log[A <: Layouter](algorithm: A, sc: SparkContext, iterations: Int, inFilePath: String, outFilePath: String) {
-        var graph = algorithm.start(sc, inFilePath)
+        var graph = algorithm.start(sc, inFilePath, iterations)
         for (i <- 0 until iterations) {
             val (_, calcTime) = time {
                 graph = algorithm.run(i, graph)
             }
             // aggiungi calcTime alla serie
+            println(s"Iteration ${i+1}/$iterations completed ($calcTime ms)")
         }
         algorithm.end(graph, outFilePath)
     }
