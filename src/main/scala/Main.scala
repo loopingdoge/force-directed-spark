@@ -71,7 +71,7 @@ object Main {
             case name => println(s"$name not recognized")
         }
         println("\n")
-        println(s"$algorithmToRun has ended! I hope you liked it senpai ≧ω≦\n")
+        println(s"$algorithmToRun has ended! I hope you liked it senpai UmU\n")
 
         val filename =
             if (inFilePath.contains("/") && inFilePath.lastIndexOf("/") != inFilePath.length - 1) {
