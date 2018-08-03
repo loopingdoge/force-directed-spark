@@ -18,7 +18,7 @@ object SPRINGUtils {
     def repulsiveForce(d: Double) = c3 / (math.sqrt(d) + 0.0001)
 }
 
-object SPRINGSpark extends Layouter {
+object SPRINGSpark extends Layouter[SparkGraph] {
     val c4 = SPRINGUtils.c4
     val (width, length) = (SPRINGUtils.width, SPRINGUtils.length)
 
@@ -100,7 +100,7 @@ object SPRINGSpark extends Layouter {
         Pajek.dump(new ImmutableGraph(normVertices, parsedGraph.edges), outFilePath)
     } */
 
-    def start(sc: SparkContext, inFilePath: String, iterations: Int): Graph[Point2] = {
+    def start(sc: SparkContext, inFilePath: String, iterations: Int): SparkGraph[Point2] = {
         val parsedGraph = Pajek.parse(inFilePath) map { _ => new Point2() }
 
         // Create the spark graph
@@ -119,11 +119,8 @@ object SPRINGSpark extends Layouter {
         new SparkGraph[Point2](initialGraph)
     }
 
-    def run(iteration: Int, g: Graph[Point2]): Graph[Point2] = {
-        val graph: XGraph[Point2, Null] = g match {
-            case SparkGraph(graph: XGraph[Point2, Null]) => graph
-            case _ => throw new IllegalArgumentException
-        }
+    def run(iteration: Int, g: SparkGraph[Point2]): SparkGraph[Point2] = {
+        val graph: XGraph[Point2, Null] = g.graph
 
         val repulsionDisplacements: RDD[(VertexId, Vec2)] = graph.vertices
         .cartesian(graph.vertices)
@@ -174,11 +171,8 @@ object SPRINGSpark extends Layouter {
         new SparkGraph[Point2](modifiedGraph)
     }
 
-    def end(graph: Graph[Point2], outFilePath: String) = {
-        val xgraph: XGraph[Point2, Null] = graph match {
-            case SparkGraph(graph: XGraph[Point2, Null]) => graph
-            case _ => throw new IllegalArgumentException
-        }
+    def end(g: SparkGraph[Point2], outFilePath: String) = {
+        val xgraph: XGraph[Point2, Null] = g.graph
 
         val maxX = (xgraph.vertices.collect map {
             case (_, pos) => pos.x
@@ -193,12 +187,12 @@ object SPRINGSpark extends Layouter {
     }
 }
 
-object SPRINGMutable extends Layouter {
+object SPRINGMutable extends Layouter[ImmutableGraph] {
     val c4 = SPRINGUtils.c4
     val (width, length) = (SPRINGUtils.width, SPRINGUtils.length)
     var vertices: Array[(Double, Double)] = new Array(0)
 
-    def start(sc: SparkContext, inFilePath: String, iterations: Int): Graph[Point2] = {
+    def start(sc: SparkContext, inFilePath: String, iterations: Int): ImmutableGraph[Point2] = {
         val parsedGraph = Pajek.parse(inFilePath)
             .map { _ => new Point2(Math.random, Math.random) }
 
@@ -212,11 +206,8 @@ object SPRINGMutable extends Layouter {
         new ImmutableGraph[Point2](parsedGraph.vertices, parsedGraph.edges)
     }
 
-    def run(iteration: Int, graph: Graph[Point2]): Graph[Point2] = {
-        val (vertexNum, edges) = graph match {
-            case ImmutableGraph(v, e) => (v.size, e)
-            case _ => throw new IllegalArgumentException
-        }
+    def run(iteration: Int, graph: ImmutableGraph[Point2]): ImmutableGraph[Point2] = {
+        val (vertexNum, edges) = (graph.vertices.size, graph.edges)
 
         // Repulsive forces iteration
         for (
@@ -252,11 +243,8 @@ object SPRINGMutable extends Layouter {
         new ImmutableGraph((0 until vertexNum) map (i => new Point2(vertices(i)._1, vertices(i)._2)) toList, edges)
     }
 
-    def end(graph: Graph[Point2], outFilePath: String) = {
-        val (vertexNum, edges) = graph match {
-            case ImmutableGraph(v, e) => (v.size, e)
-            case _ => throw new IllegalArgumentException
-        }
+    def end(graph: ImmutableGraph[Point2], outFilePath: String) = {
+        val (vertexNum, edges) = (graph.vertices.size, graph.edges)
 
         val layoutedVertices = (0 until vertexNum) map (i => new Point2(vertices(i)._1, vertices(i)._2)) toList
         val (maxX, maxY) = ((layoutedVertices map(_.x)) max, (layoutedVertices map(_.y)) max)

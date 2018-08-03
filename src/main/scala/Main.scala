@@ -65,7 +65,8 @@ object Main {
         println("\n")
         println(s"$algorithmToRun is firing up! Set, ready, go! OwO\n")
         algorithmToRun match {
-//            case "SPRING" =>    log[SparkGraph, SPRING](SPRING, sc, 5, inFilePath, outFilePath)
+            case "SPRING-M" =>  log[ImmutableGraph, SPRINGMutable.type](SPRINGMutable, sc, 5, inFilePath, outFilePath)
+            case "SPRING-S" =>  log[SparkGraph, SPRINGSpark.type](SPRINGSpark, sc, 5, inFilePath, outFilePath)
             case "FR-M" =>      log[MutableGraph, FruchtermanReingoldMutable.type](FruchtermanReingoldMutable, sc, 5, inFilePath, outFilePath)
             case "FR-S" =>      log[SparkGraph, FruchtermanReingoldSpark.type](FruchtermanReingoldSpark, sc, 5, inFilePath, outFilePath)
             case name => println(s"$name not recognized")
