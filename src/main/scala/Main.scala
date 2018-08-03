@@ -1,14 +1,32 @@
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.SparkContext
 
+import java.io.PrintWriter
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.{FileSystem, Path}
+
 object Main {
     // TODO: aggiungere data structure per serie ottenuta da log
+    var timeLog = Vector.empty[Long]
 
     def time[R](block: => R): (R, Long) = {
         val t0 = System.currentTimeMillis()
         val result = block
         val t1 = System.currentTimeMillis()
         (result, t1 - t0)
+    }
+
+    def dump(filePath: String) {
+        val conf = new Configuration()
+        val fs: FileSystem = FileSystem.get(conf)
+        val file = fs.create(new Path(filePath))
+        val bw = new PrintWriter(file)
+        
+        val csvLog = "iteration time\n" ++ (timeLog map(_.toString) mkString("\n")
+)
+
+        bw.write(csvLog)
+        bw.close()
     }
 
     def main(args: Array[String]) {
@@ -47,11 +65,13 @@ object Main {
         println("\n")
         println(s"$algorithmToRun is firing up! Set, ready, go! OwO\n")
         algorithmToRun match {
-            case "SPRING" => log(SPRING, sc, 1, inFilePath, outFilePath)
+            case "SPRING" => log(SPRING, sc, 5, inFilePath, outFilePath)
             case name => println(s"$name not recognized")
         }
         println("\n")
         println(s"$algorithmToRun has ended! I hope you liked it senpai ≧ω≦\n")
+
+        dump("out/timings.csv")
 
         // println(s"Elapsed time: $calcTime ms")
 
@@ -64,6 +84,7 @@ object Main {
             val (_, calcTime) = time {
                 graph = algorithm.run(i, graph)
             }
+            timeLog = timeLog :+ calcTime
             // aggiungi calcTime alla serie
             println(s"Iteration ${i+1}/$iterations completed ($calcTime ms)")
         }
