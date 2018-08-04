@@ -24,6 +24,9 @@ class Vec2(val x: Double, val y: Double) extends Serializable {
     def -(s: Double): Vec2 =
         new Vec2(x - s, y - s)
 
+    def /(s: Double): Vec2 =
+        new Vec2(x / s, y / s)
+
     def unary_- =
         new Vec2(-x, -y)
 
@@ -66,6 +69,9 @@ class Vec3(val x: Double, val y: Double, val z: Double) extends Serializable {
 
     def -(s: Vec3): Vec3 =
         new Vec3(x - s.x, y - s.y, z - s.z)
+
+    def /(s: Double): Vec3 =
+        new Vec3(x / s, y / s, z / s)
 
     def abs() = 
         new Vec3(math.abs(x), math.abs(y), math.abs(z))
