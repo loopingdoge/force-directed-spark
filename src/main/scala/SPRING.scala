@@ -68,7 +68,7 @@ object SPRINGSpark extends Layouter[SparkGraph] {
                 .flatMap { t =>
                     val delta = t.srcAttr - t.dstAttr
                     val displacement = delta.normalize * attractiveForce(delta.length)
-                    List((t.srcId, -displacement), (t.dstId, displacement))
+                    Vector((t.srcId, -displacement), (t.dstId, displacement))
                 }
                 .reduceByKey(_ + _)
 
@@ -97,7 +97,7 @@ object SPRINGSpark extends Layouter[SparkGraph] {
 
         val vertices = computedGraph.vertices
         val (maxX, maxY) = ((vertices map(_._2.x)) max, (vertices map(_._2.y)) max)
-        val normVertices = (vertices map (v => new Point2(v._2.x/maxX * width, v._2.y/maxY * length)) collect).toList
+        val normVertices = (vertices map (v => new Point2(v._2.x/maxX * width, v._2.y/maxY * length)) collect).toVector
         Pajek.dump(new ImmutableGraph(normVertices, parsedGraph.edges), outFilePath)
     } */
 
@@ -109,7 +109,7 @@ object SPRINGSpark extends Layouter[SparkGraph] {
             sc.parallelize(
                 parsedGraph.vertices
                     .zipWithIndex
-                    .map { case (v, i) => (i.toLong + 1, v) }
+                    .map { case (v, i) => (i.toLong, v) }
             ),
             sc.parallelize(
                 parsedGraph.edges
@@ -216,24 +216,24 @@ object SPRINGMutable extends Layouter[ImmutableGraph] {
 
         // Attractive forces iteration
         for ((v, u) <- edges) {
-            val distance = (vertices(v - 1)._1 - vertices(u - 1)._1, vertices(v - 1)._2 - vertices(u - 1)._2)
+            val distance = (vertices(v)._1 - vertices(u)._1, vertices(v)._2 - vertices(u)._2)
             val length = Math.sqrt(Math.pow(distance._1, 2) + Math.pow(distance._2, 2))
             val normDistance = (distance._1 / length, distance._2 / length)
 
             val attractive = SPRINGUtils.attractiveForce(length) * c4
 
             val displacement = (normDistance._1 * attractive, normDistance._2 * attractive)
-            vertices(v - 1) = (vertices(v - 1)._1 - displacement._1, vertices(v - 1)._2 - displacement._2)
-            vertices(u - 1) = (vertices(u - 1)._1 + displacement._1, vertices(u - 1)._2 + displacement._2)
+            vertices(v) = (vertices(v)._1 - displacement._1, vertices(v)._2 - displacement._2)
+            vertices(u) = (vertices(u)._1 + displacement._1, vertices(u)._2 + displacement._2)
         }
 
-        new ImmutableGraph((0 until vertexNum) map (i => new Point2(vertices(i)._1, vertices(i)._2)) toList, edges)
+        new ImmutableGraph((0 until vertexNum) map (i => new Point2(vertices(i)._1, vertices(i)._2)) toVector, edges)
     }
 
     def end(graph: ImmutableGraph[Point2], outFilePath: String) = {
         val (vertexNum, edges) = (graph.vertices.size, graph.edges)
 
-        val layoutedVertices = (0 until vertexNum) map (i => new Point2(vertices(i)._1, vertices(i)._2)) toList
+        val layoutedVertices = (0 until vertexNum) map (i => new Point2(vertices(i)._1, vertices(i)._2)) toVector
         val (maxX, maxY) = ((layoutedVertices map(_.x)) max, (layoutedVertices map(_.y)) max)
         val layoutedNorm = layoutedVertices map (p => new Point2(p.x/maxX * width, p.y/maxY * length))
         Pajek.dump(new ImmutableGraph(layoutedNorm, edges), outFilePath)

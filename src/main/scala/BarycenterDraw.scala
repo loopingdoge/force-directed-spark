@@ -2,21 +2,21 @@ import java.awt.geom.Point2D
 
 object BaricenterDraw {
 
-//    def findPolygon(graph: Graph[Int]): List[Int] = {
+//    def findPolygon(graph: Graph[Int]): Vector[Int] = {
 //        // Prendo 2 nodi collegati e faccio partire una
 //    }
 
      def run() {
          val graph = Pajek.parse("data/3planar-17352v.net")
 
-         val incidents: List[List[Int]] = (0 until graph.vertices.length) map (v => graph.incidents( v + 1 )) toList
+         val incidents: Vector[Vector[Int]] = (0 until graph.vertices.length) map (v => graph.incidents( v + 1 )) toVector
 
          print(incidents)
 
          // TODO Initialize V0: place fixed vertices u ∈ V0 at corners of P;
 
          // Initialize V1: place free vertices v ∈ V1 at the origin;
-         var vPositions = List.fill(graph.vertices.length)(new Point2(0.0, 0.0))
+         var vPositions = Vector.fill(graph.vertices.length)(new Point2(0.0, 0.0))
 
          vPositions = vPositions.zipWithIndex.map{
              case (vPosition, i) => {
