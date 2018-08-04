@@ -16,10 +16,13 @@ object Pajek {
         val stream = fs.open(new Path(fileName))
         val lines = Source.fromInputStream(stream).getLines
         val nVertices = lines.next.split(" ")(1).toInt
-        val vertices = (0 until nVertices).toList
+        val vertices = (0 until nVertices).toVector
 
         if(lines.next != "*Edges") vertices.foreach(_ => lines.next)
-        val edges = lines.map(line => line.split(" ")).map(splitted => Tuple2(splitted(0).toInt, splitted(1).toInt)).toList
+        val edges = lines
+            .map(line => line.split(" "))
+            .map(split => (split(0).toInt - 1, split(1).toInt - 1))
+            .toVector
         new ImmutableGraph(vertices, edges)
     }
 
@@ -32,7 +35,7 @@ object Pajek {
         val file = fs.create(new Path(filepath))
         val bw = new PrintWriter(file)
 
-        val verticesHeading = List(s"*Vertices ${graph.vertices.length}")
+        val verticesHeading = Vector(s"*Vertices ${graph.vertices.length}")
         val verticesPajek = graph
             .vertices
             .zipWithIndex
@@ -40,15 +43,15 @@ object Pajek {
                 s"${i + 1} ${round(v.x)} ${round(v.y)}"
             }
 
-        val edgesHeading = List("*Edges")
+        val edgesHeading = Vector("*Edges")
         val edgesPajek = graph
             .edges
             .map {
                 case (u, v) =>
-                    s"$u $v"
+                    s"${u + 1} ${v + 1}"
             }
 
-        val output = List(verticesHeading, verticesPajek, edgesHeading, edgesPajek)
+        val output = Vector(verticesHeading, verticesPajek, edgesHeading, edgesPajek)
             .flatten
             .mkString("\n")
 
