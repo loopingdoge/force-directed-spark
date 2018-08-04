@@ -21,6 +21,7 @@ object SPRINGUtils {
 object SPRINGSpark extends Layouter[SparkGraph] {
     val c4 = SPRINGUtils.c4
     val (width, length) = (SPRINGUtils.width, SPRINGUtils.length)
+    var nodePairs: RDD[((VertexId, Point2), (VertexId, Point2))] = _
 
     // Old parallel version
     /* def runSpark(sc: SparkContext, iterations: Int, inFilePath: String, outFilePath: String) {
@@ -115,6 +116,9 @@ object SPRINGSpark extends Layouter[SparkGraph] {
                     .map { case (u, v) => Edge(u, v, null) }
             )
         )
+        nodePairs = initialGraph.vertices.cartesian(initialGraph.vertices).filter {
+            case ((id1, _), (id2, _)) => id1 != id2
+        }.cache
 
         new SparkGraph[Point2](initialGraph)
     }
@@ -122,52 +126,35 @@ object SPRINGSpark extends Layouter[SparkGraph] {
     def run(iteration: Int, g: SparkGraph[Point2]): SparkGraph[Point2] = {
         val graph: XGraph[Point2, Null] = g.graph
 
-        val repulsionDisplacements: RDD[(VertexId, Vec2)] = graph.vertices
-        .cartesian(graph.vertices)
-        // Remove the pairs having the same ID
-        .filter {
-            case ((id1, _), (id2, _)) if id1 == id2 => false
-            case _ => true
-        }
-        // Calculate the displacement for every pair
+        val repulsionDisplacements: RDD[(VertexId, Vec2)] = this.nodePairs
         .map {
             case ((id1, pos1), (id2, pos2)) =>
                 val delta = pos1 - pos2
-                val displacement = delta.normalize * SPRINGUtils.repulsiveForce(delta.length)
+                val displacement = delta.normalize * SPRINGUtils.repulsiveForce(delta.length) * c4
                 (id1, displacement)
         }
-        // Sum the displacements of the pairs having the same key
-        // We finally obtain the displacement for every node
         .reduceByKey((a: Vec2, b: Vec2) => a + b)
 
         val attractiveDisplacements: RDD[(VertexId, Vec2)] = graph.triplets
-            // Calculate the displacement for every edge
-            // Flatten the list containing 2 pairs (one for each node of the edge)
             .flatMap { t =>
                 val delta = t.srcAttr - t.dstAttr
-                val displacement = delta.normalize * SPRINGUtils.attractiveForce(delta.length)
-                List((t.srcId, -displacement), (t.dstId, displacement))
+                val displacement = delta.normalize * SPRINGUtils.attractiveForce(delta.length) * c4
+                Vector((t.srcId, -displacement), (t.dstId, displacement))
             }
             .reduceByKey(_ + _)
 
-        // Sum the repulsion and attractive displacements
         val sumDisplacements = repulsionDisplacements
             .union(attractiveDisplacements)
             .reduceByKey(_ + _)
-            .collect
-            // Transform to a Map in order to get the displacement given the nodeID
-            .toMap
+            .collectAsMap
 
-        // Obtain a new graph by summing the displacements to the node current position
         val modifiedGraph = graph.mapVertices {
             case (id, pos) =>
                 val vDispl = sumDisplacements(id)
-                val newPos = pos + vDispl.normalize * vDispl.length * c4
+                val newPos = pos + vDispl
                 newPos
         }
 
-        //modifiedGraph.vertices.foreach(println)
-        modifiedGraph.checkpoint
         new SparkGraph[Point2](modifiedGraph)
     }
 
