@@ -2,10 +2,14 @@ import org.apache.spark._
 import org.apache.spark.graphx.{Edge, VertexId, Graph => XGraph}
 import org.apache.spark.rdd.RDD
 
+class FRNode(var pos: Point2, var displacement: Vec2)
+
 object FruchtermanReingoldUtils {
-    val width = 1000
-    val length = 1000
+
+    val width = 300
+    val length = 300
     val initialTemperature: Double = width / 10
+    val gravity = 10
 
     def repulsiveForce(k: Double, x: Double): Double = {
         val divisor = if (x == 0) 0.001 else x
@@ -17,6 +21,16 @@ object FruchtermanReingoldUtils {
         Math.pow(x, 2) / divisor
     }
 
+    def gravityForce(pos: Point2, k: Double): Vec2 = {
+        val distanceFromOriginLength: Double = pos.toVec.length
+        if (distanceFromOriginLength > 0) {
+            val factor = 0.01 * k * gravity * distanceFromOriginLength
+            -(pos.toVec * factor) / distanceFromOriginLength
+        } else {
+            Vec2.zero
+        }
+    }
+
     // Inverse linear temperature decay
     def temperature(currIter: Int, maxIter: Int): Double = {
         -((currIter - maxIter).toDouble / maxIter) * initialTemperature
@@ -25,11 +39,8 @@ object FruchtermanReingoldUtils {
 
 object FruchtermanReingoldMutable extends Layouter[MutableGraph] {
 
-    class FRNode(var pos: Point2, var displacement: Vec2)
-
     private val width = FruchtermanReingoldUtils.width
     private val length = FruchtermanReingoldUtils.length
-    private val initialTemperature = FruchtermanReingoldUtils.initialTemperature
 
     private val area = width * length
     private var k: Double = 0.0
@@ -37,6 +48,7 @@ object FruchtermanReingoldMutable extends Layouter[MutableGraph] {
 
     private def repulsiveForce(k: Double, x: Double) = FruchtermanReingoldUtils.repulsiveForce(k, x)
     private def attractiveForce(k: Double, x: Double) = FruchtermanReingoldUtils.attractiveForce(k, x)
+    private def gravityForce(pos: Point2, k: Double): Vec2 = FruchtermanReingoldUtils.gravityForce(pos, k)
     private def temperature(currIter: Int, maxIter: Int) = FruchtermanReingoldUtils.temperature(currIter, maxIter)
 
     override def start(sc: SparkContext, inFilePath: String, iterations: Int): MutableGraph[Point2] = {
@@ -54,7 +66,11 @@ object FruchtermanReingoldMutable extends Layouter[MutableGraph] {
     }
 
     override def run(i: Int, g: MutableGraph[Point2]): MutableGraph[Point2] = {
-        val (vertices, edges) = (g.vertices.map(pos => new FRNode(pos, Vec2.zero)), g.edges)
+        val (vertices, edges) =
+            (
+                g.vertices.map(pos => new FRNode(pos, Vec2.zero)),
+                g.edges
+            )
 
         val t = temperature(i, iterations)
 
@@ -71,11 +87,15 @@ object FruchtermanReingoldMutable extends Layouter[MutableGraph] {
             }
         }
 
+        for (v <- vertices) {
+            v.displacement += gravityForce(v.pos, k)
+        }
+
         for ((v1Index, v2Index) <- edges) {
-            val delta = vertices(v1Index - 1).pos - vertices(v2Index - 1).pos
+            val delta = vertices(v1Index).pos - vertices(v2Index).pos
             val displacement = delta.normalize * attractiveForce(k, delta.length)
-            vertices(v1Index - 1).displacement -= displacement
-            vertices(v2Index - 1).displacement += displacement
+            vertices(v1Index).displacement -= displacement
+            vertices(v2Index).displacement += displacement
         }
 
         for (v <- vertices) {
@@ -93,7 +113,6 @@ object FruchtermanReingoldMutable extends Layouter[MutableGraph] {
 object FruchtermanReingoldSpark extends Layouter[SparkGraph] {
     private val width = FruchtermanReingoldUtils.width
     private val length = FruchtermanReingoldUtils.length
-    private val initialTemperature = FruchtermanReingoldUtils.initialTemperature
 
     private val area = width * length
     private var k: Double = 0.0
@@ -103,6 +122,7 @@ object FruchtermanReingoldSpark extends Layouter[SparkGraph] {
     private def repulsiveForce(k: Double, x: Double) = FruchtermanReingoldUtils.repulsiveForce(k, x)
     private def attractiveForce(k: Double, x: Double) = FruchtermanReingoldUtils.attractiveForce(k, x)
     private def temperature(currIter: Int, maxIter: Int) = FruchtermanReingoldUtils.temperature(currIter, maxIter)
+    private def gravityForce(pos: Point2, k: Double): Vec2 = FruchtermanReingoldUtils.gravityForce(pos, k)
 
     override def start (sc: SparkContext, inFilePath: String, iterations: Int): SparkGraph[Point2] = {
         // Place vertices at random
@@ -114,7 +134,7 @@ object FruchtermanReingoldSpark extends Layouter[SparkGraph] {
             sc.parallelize(
                 parsedGraph.vertices
                     .zipWithIndex
-                    .map { case (v, i) => (i.toLong + 1, v) }
+                    .map { case (v, i) => (i.toLong, v) }
             ),
             sc.parallelize(
                 parsedGraph.edges
@@ -164,9 +184,17 @@ object FruchtermanReingoldSpark extends Layouter[SparkGraph] {
             }
             .reduceByKey(_ + _)
 
+        val gravityDisplacements: RDD[(VertexId, Vec2)] = graph.vertices
+            .map {
+                case (id, pos) =>
+                    val displacement = gravityForce(pos, k)
+                    (id, displacement)
+            }
+
         // Sum the repulsion and attractive displacements
         val sumDisplacements = repulsionDisplacements
             .union(attractiveDisplacements)
+            .union(gravityDisplacements)
             .reduceByKey(_ + _)
             // Collect as a Map in order to get the displacement given the nodeID
             .collectAsMap
