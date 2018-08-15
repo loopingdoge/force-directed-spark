@@ -67,7 +67,7 @@ object ForceAtlas2 {
 
     def runMutable(iterations: Int, inFilePath: String, outFilePath: String) {
         // Place vertices at random
-        val parsedGraph = Pajek.parse(inFilePath)
+        val parsedGraph = Parser.parse(inFilePath)
                 .map { _ => Point2.random }
 
         val graph = MutableGraph.fromImmutable(

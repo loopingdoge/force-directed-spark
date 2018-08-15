@@ -6,15 +6,29 @@ import java.io._
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 
-object Pajek {
+object Parser {
+    val conf = new Configuration()
+    val fs: FileSystem = FileSystem.get(conf)
 
+    def parse(fileName: String): ImmutableGraph[Int] = {
+        val source = Source.fromFile(fileName)
+
+        val lines = source.getLines
+        if( lines.next.startsWith("*Vertices") ) {
+            Pajek.parse(source.reset)
+        } else {
+            SNAP.parse(source.reset)
+        }
+    }
+}
+
+object Pajek {
     val conf = new Configuration()
 //    val fs: FileSystem = new Path("gs://force-directed-bucket").getFileSystem(conf)
     val fs: FileSystem = FileSystem.get(conf)
 
-    def parse(fileName: String): ImmutableGraph[Int] = {
-        val stream = fs.open(new Path(fileName))
-        val lines = Source.fromInputStream(stream).getLines
+    def parse(source: Source): ImmutableGraph[Int] = {
+        val lines = source.getLines
         val nVertices = lines.next.split(" ")(1).toInt
         val vertices = (0 until nVertices).toVector
 
@@ -59,4 +73,22 @@ object Pajek {
         bw.close()
     }
 
+}
+
+object SNAP {
+
+    def parse(source: Source): ImmutableGraph[Int] = {
+        val lines = source
+            .getLines
+            .dropWhile( line => line.startsWith("#"))
+
+        val vertices = (0 until 4).toVector
+
+        val edges = lines
+            .map(line => line.split("\\s+"))
+            .map(split => (split(0).toInt, split(1).toInt))
+            .toVector
+
+        new ImmutableGraph(vertices, edges)
+    }
 }

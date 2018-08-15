@@ -102,7 +102,7 @@ object SPRINGSpark extends Layouter[SparkGraph] {
     } */
 
     def start(sc: SparkContext, inFilePath: String, iterations: Int): SparkGraph[Point2] = {
-        val parsedGraph = Pajek.parse(inFilePath) map { _ => new Point2() }
+        val parsedGraph = Parser.parse(inFilePath) map { _ => new Point2() }
 
         // Create the spark graph
         val initialGraph = XGraph(
@@ -180,7 +180,7 @@ object SPRINGMutable extends Layouter[ImmutableGraph] {
     var vertices: Array[(Double, Double)] = new Array(0)
 
     def start(sc: SparkContext, inFilePath: String, iterations: Int): ImmutableGraph[Point2] = {
-        val parsedGraph = Pajek.parse(inFilePath)
+        val parsedGraph = Parser.parse(inFilePath)
             .map { _ => new Point2(Math.random, Math.random) }
 
         val vertexNum = parsedGraph.vertices.size
