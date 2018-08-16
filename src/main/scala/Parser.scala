@@ -85,10 +85,10 @@ object SNAP {
         val edges = lines
             .map(line => line.split("\\s+"))
             // Index correction 0 -> 1
-            .map(split => (split(0).toInt + 1, split(1).toInt + 1))
+            .map(split => (split(0).toInt, split(1).toInt))
             .toVector
 
-        val nVertices = edges
+        val nVertices = 1 + edges
             .foldLeft[Int](0)( (maxId, edge: (Int, Int)) 
                 => Math.max(maxId, Math.max(edge._1, edge._2)))
 
