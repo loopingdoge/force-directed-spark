@@ -84,6 +84,7 @@ object SNAP {
 
         val edges = lines
             .map(line => line.split("\\s+"))
+            // Index correction 0 -> 1
             .map(split => (split(0).toInt + 1, split(1).toInt + 1))
             .toVector
 
@@ -92,6 +93,7 @@ object SNAP {
                 => Math.max(maxId, Math.max(edge._1, edge._2)))
 
         val vertices = (1 to nVertices).toVector
+        print(s"$edges \n$nVertices \n $vertices \n\n")
         
         new ImmutableGraph(vertices, edges)
     }
