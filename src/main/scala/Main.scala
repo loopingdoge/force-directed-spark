@@ -22,8 +22,7 @@ object Main {
         val file = fs.create(new Path(filePath))
         val bw = new PrintWriter(file)
         
-        val csvLog = "iteration time\n" ++ (timeLog map(_.toString) mkString("\n")
-)
+        val csvLog = "iteration time\n" ++ (timeLog map(_.toString) mkString("\n"))
 
         bw.write(csvLog)
         bw.close()
@@ -33,20 +32,20 @@ object Main {
 
         if( args.length < 2 ) {            
             print("""
-                Usage: run algorithm input output
+    Usage: run algorithm inFile [outFile]
 
-                    - algorithm | SPRING-M, SPRING-S, FR-M, FR-S
-                    - input | input file path
-                    - output | output file path
+        - algorithm | SPRING-M, SPRING-S, FR-M, FR-S
+        - inFile | input file name, picked from the "data" folder
+        - outFile | optional output file name, saved in the "out" folder
 
             """)
             return
         }
 
         val algorithmToRun = args(0)
-        val inFilePath = args(1)
-        print(args(1))
-        val outFilePath = args(2)
+        val inFilePath = "data/" + args(1)
+        val outFileName = if( args.length == 2 ) args(1).replace(".txt", ".net") else args(2)
+        val outFilePath = "out/" + outFileName
 
 
         // Spark initialization
