@@ -82,13 +82,17 @@ object SNAP {
             .getLines
             .dropWhile( line => line.startsWith("#"))
 
-        val vertices = (0 until 4).toVector
-
         val edges = lines
             .map(line => line.split("\\s+"))
             .map(split => (split(0).toInt, split(1).toInt))
             .toVector
 
+        val nVertices = 1 + edges
+            .foldLeft[Int](0)( (maxId, edge: (Int, Int)) 
+                => Math.max(maxId, Math.max(edge._1, edge._2)))
+
+        val vertices = (0 until nVertices).toVector
+        
         new ImmutableGraph(vertices, edges)
     }
 }
