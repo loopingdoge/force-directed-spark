@@ -83,7 +83,7 @@ object Main {
             case "SPRING-S" =>  log[SparkGraph, SPRINGSpark.type](SPRINGSpark, sc, 5, inFilePath, outFilePath)
             case "FR-M" =>      log[MutableGraph, FRMutable.type](FRMutable, sc, 5, inFilePath, outFilePath)
             case "FR-S" =>      log[SparkGraph, FRSpark.type](FRSpark, sc, 5, inFilePath, outFilePath)
-            case "FA2" =>      log[MutableGraph, ForceAtlas2.type](ForceAtlas2, sc, 5, inFilePath, outFilePath)
+            case "FA2" =>       log[MutableGraph, ForceAtlas2.type](ForceAtlas2, sc, 500, inFilePath, outFilePath)
             case name => println(s"$name not recognized")
         }
         println("\n")
