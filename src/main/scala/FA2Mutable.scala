@@ -148,7 +148,6 @@ object FA2Mutable extends FA2Data with Layouter[MutableGraph] {
     }
 
     override def end(graph: MutableGraph[Point2], outFilePath: String): Unit = {
-        print(s" ROBBY STUPIDO COME IL PORCO: ${graph.vertices(0)} \n")
         Pajek.dump(graph.toImmutable, outFilePath)
     }
 
