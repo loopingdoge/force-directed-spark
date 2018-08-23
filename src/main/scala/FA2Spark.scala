@@ -4,7 +4,7 @@ import org.apache.spark.rdd.RDD
 
 import scala.collection.immutable
 
-object FA2Mutable extends FA2Data with Layouter[MutableGraph] {
+object FA2Spark extends FA2Data with Layouter[MutableGraph] {
 
     private var speed = 1.0
     private var speedEfficiency = 1.0

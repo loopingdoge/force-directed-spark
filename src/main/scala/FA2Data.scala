@@ -1,3 +1,5 @@
+class FANode (var pos: Point2, val mass: Int)
+
 trait FA2Data {
 
     val directed = false
