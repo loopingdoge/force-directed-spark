@@ -34,7 +34,7 @@ object Main {
             print("""
     Usage: run algorithm inFile [outFile]
 
-        - algorithm | SPRING-M, SPRING-S, FR-M, FR-S
+        - algorithm | SPRING-M, SPRING-S, FR-M, FR-S, FA2-M
         - inFile | input file name, picked from the "data" folder
         - outFile | optional output file name, saved in the "out" folder
 
@@ -83,7 +83,7 @@ object Main {
             case "SPRING-S" =>  log[SparkGraph, SPRINGSpark.type](SPRINGSpark, sc, 5, inFilePath, outFilePath)
             case "FR-M" =>      log[MutableGraph, FRMutable.type](FRMutable, sc, 5, inFilePath, outFilePath)
             case "FR-S" =>      log[SparkGraph, FRSpark.type](FRSpark, sc, 5, inFilePath, outFilePath)
-            case "FA2" =>       log[MutableGraph, ForceAtlas2.type](ForceAtlas2, sc, 500, inFilePath, outFilePath)
+            case "FA2-M" =>       log[MutableGraph, FA2Mutable.type](FA2Mutable, sc, 500, inFilePath, outFilePath)
             case name => println(s"$name not recognized")
         }
         println("\n")

@@ -6,7 +6,7 @@ import scala.collection.immutable
 
 class FANode (var pos: Point2, val mass: Int)
 
-object ForceAtlas2 extends ForceAtlas2Data with Layouter[MutableGraph] {
+object FA2Mutable extends FA2Data with Layouter[MutableGraph] {
 
     private var speed = 1.0
     private var speedEfficiency = 1.0

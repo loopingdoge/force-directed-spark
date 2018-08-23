@@ -1,4 +1,4 @@
-trait ForceAtlas2Data {
+trait FA2Data {
 
     val directed = false
     val barnesHutTheta = 1.2
