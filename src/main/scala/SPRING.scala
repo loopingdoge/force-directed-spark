@@ -10,7 +10,7 @@ import org.apache.spark.rdd.RDD
 
 object SPRINGUtils {
     // original uses c1 = 2, c2 = 1, c3 = 1, c4 = 0.1, and M = 100
-    val (c1, c2, c3, c4) = (4.0, 1.0, 2.0, 0.01)
+    val (c1, c2, c3, c4) = (8.0, 1.0, 4.0, 0.01)
     val (width, length) = (1000, 1000)
 
     // Algorithm forces
@@ -21,7 +21,6 @@ object SPRINGUtils {
 object SPRINGSpark extends Layouter[SparkGraph] {
     val c4 = SPRINGUtils.c4
     val (width, length) = (SPRINGUtils.width, SPRINGUtils.length)
-    var nodePairs: RDD[((VertexId, Point2), (VertexId, Point2))] = _
 
     // Old parallel version
     /* def runSpark(sc: SparkContext, iterations: Int, inFilePath: String, outFilePath: String) {
@@ -116,9 +115,6 @@ object SPRINGSpark extends Layouter[SparkGraph] {
                     .map { case (u, v) => Edge(u, v, null) }
             )
         )
-        nodePairs = initialGraph.vertices.cartesian(initialGraph.vertices).filter {
-            case ((id1, _), (id2, _)) => id1 != id2
-        }.cache
 
         new SparkGraph[Point2](initialGraph)
     }
@@ -126,11 +122,16 @@ object SPRINGSpark extends Layouter[SparkGraph] {
     def run(iteration: Int, g: SparkGraph[Point2]): SparkGraph[Point2] = {
         val graph: XGraph[Point2, Null] = g.graph
 
-        val repulsionDisplacements: RDD[(VertexId, Vec2)] = this.nodePairs
+        val repulsionDisplacements: RDD[(VertexId, Vec2)] = graph
+        .vertices
+        .cartesian(graph.vertices)
+        .filter {
+            case ((id1, _), (id2, _)) => id1 != id2
+        }
         .map {
             case ((id1, pos1), (id2, pos2)) =>
                 val delta = pos1 - pos2
-                val displacement = delta.normalize * SPRINGUtils.repulsiveForce(delta.length) * c4
+                val displacement = delta.normalize * SPRINGUtils.repulsiveForce(delta.length)
                 (id1, displacement)
         }
         .reduceByKey((a: Vec2, b: Vec2) => a + b)
@@ -138,7 +139,7 @@ object SPRINGSpark extends Layouter[SparkGraph] {
         val attractiveDisplacements: RDD[(VertexId, Vec2)] = graph.triplets
             .flatMap { t =>
                 val delta = t.srcAttr - t.dstAttr
-                val displacement = delta.normalize * SPRINGUtils.attractiveForce(delta.length) * c4
+                val displacement = delta.normalize * SPRINGUtils.attractiveForce(delta.length)
                 Vector((t.srcId, -displacement), (t.dstId, displacement))
             }
             .reduceByKey(_ + _)
@@ -151,7 +152,7 @@ object SPRINGSpark extends Layouter[SparkGraph] {
         val modifiedGraph = graph.mapVertices {
             case (id, pos) =>
                 val vDispl = sumDisplacements(id)
-                val newPos = pos + vDispl
+                val newPos = pos + vDispl.normalize * vDispl.length * c4
                 newPos
         }
 
