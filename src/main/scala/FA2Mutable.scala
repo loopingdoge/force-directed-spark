@@ -22,7 +22,7 @@ object FA2Mutable extends FA2Data with Layouter[MutableGraph] {
         val graph = MutableGraph.fromImmutable(
             parsedGraph.map { (p, i) =>
                 val nodeMass = parsedGraph.edges.foldLeft(0)((acc, edge) =>
-                    if (edge._1 - 1 == i || edge._2 - 1 == i) acc + 1 else acc
+                    if (edge._1 == i || edge._2 == i) acc + 1 else acc
                 )
                 new FANode(p, nodeMass)
             }
@@ -145,8 +145,8 @@ object FA2Mutable extends FA2Data with Layouter[MutableGraph] {
         new MutableGraph[Point2](vertices.map(v => v.pos), edges)
     }
 
-    override def end(graph: MutableGraph[Point2], outFilePath: String): Unit = {
-        Pajek.dump(graph.toImmutable, outFilePath)
+    override def end(g: MutableGraph[Point2], outFilePath: String): Unit = {
+        Pajek.dump(g.toImmutable, outFilePath)
     }
 
 }
