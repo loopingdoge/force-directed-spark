@@ -79,12 +79,12 @@ object Main {
         println("\n")
         println(s"$algorithmToRun is firing up! Set, ready, go! OwO\n")
         algorithmToRun match {
-            case "SPRING-M" =>  log[ImmutableGraph, SPRINGMutable.type](SPRINGMutable, sc, 5, inFilePath, outFilePath)
-            case "SPRING-S" =>  log[SparkGraph, SPRINGSpark.type](SPRINGSpark, sc, 5, inFilePath, outFilePath)
+            case "SPRING-M" =>  log[ImmutableGraph, SpringMutable.type](SpringMutable, sc, 5, inFilePath, outFilePath)
+            case "SPRING-S" =>  log[SparkGraph, SpringSpark.type](SpringSpark, sc, 5, inFilePath, outFilePath)
             case "FR-M" =>      log[MutableGraph, FRMutable.type](FRMutable, sc, 5, inFilePath, outFilePath)
             case "FR-S" =>      log[SparkGraph, FRSpark.type](FRSpark, sc, 5, inFilePath, outFilePath)
             case "FA2-M" =>       log[MutableGraph, FA2Mutable.type](FA2Mutable, sc, 500, inFilePath, outFilePath)
-            case "FA2-S" =>       log[MutableGraph, FA2Spark.type](FA2Spark, sc, 500, inFilePath, outFilePath)
+            // case "FA2-S" =>       log[MutableGraph, FA2Spark.type](FA2Spark, sc, 500, inFilePath, outFilePath)
             case name => println(s"$name not recognized")
         }
         println("\n")
