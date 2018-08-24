@@ -18,6 +18,9 @@ case class ImmutableGraph[T] (vertices: Vector[T], edges: Vector[(Int, Int)]) ex
 object ImmutableGraph {
     def fromSpark[T, U](g: XGraph[T, U]): ImmutableGraph[T] = {
         val vertices = g.vertices
+            .sortBy {
+                case (id, _) => id
+            }
             .collect
             .map {
                 case (_, v) => v

@@ -1,4 +1,3 @@
-@SerialVersionUID(100L)
 class Vec2(val x: Double, val y: Double) extends Serializable {
     def length: Double =
         Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2))
@@ -47,7 +46,6 @@ object Vec2 {
         new Vec2(x, y)
 }
 
-@SerialVersionUID(100L)
 class Vec3(val x: Double, val y: Double, val z: Double) extends Serializable {
     def length: Double =
         Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2) + Math.pow(z, 2))

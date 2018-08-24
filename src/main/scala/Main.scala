@@ -22,17 +22,31 @@ object Main {
         val file = fs.create(new Path(filePath))
         val bw = new PrintWriter(file)
         
-        val csvLog = "iteration time\n" ++ (timeLog map(_.toString) mkString("\n")
-)
+        val csvLog = "iteration time\n" ++ (timeLog map(_.toString) mkString("\n"))
 
         bw.write(csvLog)
         bw.close()
     }
 
     def main(args: Array[String]) {
+
+        if( args.length < 2 ) {            
+            print("""
+    Usage: run algorithm inFile [outFile]
+
+        - algorithm | SPRING-M, SPRING-S, FR-M, FR-S, FA2-M
+        - inFile | input file name, picked from the "data" folder
+        - outFile | optional output file name, saved in the "out" folder
+
+            """)
+            return
+        }
+
         val algorithmToRun = args(0)
-        val inFilePath = args(1)
-        val outFilePath = args(2)
+        val inFilePath = "data/" + args(1)
+        val outFileName = if( args.length == 2 ) args(1).replace(".txt", ".net") else args(2)
+        val outFilePath = "out/" + outFileName
+
 
         // Spark initialization
         val spark = SparkSession
@@ -67,8 +81,9 @@ object Main {
         algorithmToRun match {
             case "SPRING-M" =>  log[ImmutableGraph, SPRINGMutable.type](SPRINGMutable, sc, 5, inFilePath, outFilePath)
             case "SPRING-S" =>  log[SparkGraph, SPRINGSpark.type](SPRINGSpark, sc, 5, inFilePath, outFilePath)
-            case "FR-M" =>      log[MutableGraph, FruchtermanReingoldMutable.type](FruchtermanReingoldMutable, sc, 5, inFilePath, outFilePath)
-            case "FR-S" =>      log[SparkGraph, FruchtermanReingoldSpark.type](FruchtermanReingoldSpark, sc, 5, inFilePath, outFilePath)
+            case "FR-M" =>      log[MutableGraph, FRMutable.type](FRMutable, sc, 5, inFilePath, outFilePath)
+            case "FR-S" =>      log[SparkGraph, FRSpark.type](FRSpark, sc, 5, inFilePath, outFilePath)
+            case "FA2-M" =>       log[MutableGraph, FA2Mutable.type](FA2Mutable, sc, 500, inFilePath, outFilePath)
             case name => println(s"$name not recognized")
         }
         println("\n")

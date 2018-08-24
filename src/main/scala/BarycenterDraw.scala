@@ -7,7 +7,7 @@ object BaricenterDraw {
 //    }
 
      def run() {
-         val graph = Pajek.parse("data/3planar-17352v.net")
+         val graph = Parser.parse("data/3planar-17352v.net")
 
          val incidents: Vector[Vector[Int]] = (0 until graph.vertices.length) map (v => graph.incidents( v + 1 )) toVector
 

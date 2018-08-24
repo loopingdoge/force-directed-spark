@@ -1,4 +1,3 @@
-@SerialVersionUID(100L)
 class Point2(val x: Double = Math.random, val y: Double = Math.random) extends Serializable {
     def +(other: Point2) = new Point2(x + other.x, y + other.y)
     def -(other: Point2) = new Vec2(x - other.x, y - other.y)
@@ -28,9 +27,9 @@ object Point2 {
     def random = new Point2(Math.random(), Math.random())
     def zero = new Point2(0.0, 0.0)
     def one = new Point2(1.0, 1.0)
+    def apply(x: Double, y: Double) = new Point2(x, y)
 }
 
-@SerialVersionUID(100L)
 class Point3(val x: Double = Math.random, val y: Double = Math.random, val z: Double = Math.random) extends Serializable {
     def +(other: Point3) = new Point3(x + other.x, y + other.y, z + other.z)
     def -(other: Point3) = new Vec3(x - other.x, y - other.y, z - other.z)
@@ -58,4 +57,7 @@ class Point3(val x: Double = Math.random, val y: Double = Math.random, val z: Do
 
 object Point3 {
     def random = new Point3(Math.random, Math.random, Math.random)
+    def zero = new Point3(0.0, 0.0, 0.0)
+    def one = new Point3(1.0, 1.0, 1.0)
+    def apply(x: Double, y: Double, z: Double) = new Point3(x, y, z)
 }
