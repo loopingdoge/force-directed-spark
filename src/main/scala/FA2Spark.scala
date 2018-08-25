@@ -10,38 +10,53 @@ object FA2Spark extends FA2Data with Layouter[MutableGraph] {
     private var speedEfficiency = 1.0
     private var iterations = 0
 
-    private var nodesDx: Array[Vec2] = new Array[Vec2](0)
-    private var nodesOldDx: Array[Vec2] = new Array[Vec2](0)
+    private var nodesDx: RDD[(VertexId, Vec2)] = _
+    private var nodesOldDx: RDD[(VertexId, Vec2)] = _
+    private var nodesMass: RDD[(VertexId, Long)] = _
     private var outboundAttractionCompensation = 0.0
     
-    override def start(sc: SparkContext, inFilePath: String, iterations: Int): MutableGraph[Point2] = {
+    override def start(sc: SparkContext, inFilePath: String, iterations: Int): SparkGraph[Point2] = {
         // Place vertices at random
         val parsedGraph = Parser.parse(inFilePath)
                 .map { _ => Point2.random }
-        
-        val graph = MutableGraph.fromImmutable(
-            parsedGraph.map { (p, i) =>
-                val nodeMass = parsedGraph.edges.foldLeft(0)((acc, edge) =>
-                    if (edge._1 - 1 == i || edge._2 - 1 == i) acc + 1 else acc
-                )
-                new FANode(p, nodeMass)
-            }
+
+        val initialGraph = XGraph(
+            sc.parallelize(
+                parsedGraph.vertices
+                    .zipWithIndex
+                    .map { case (v, i) => (i.toLong, v) }
+            ),
+            sc.parallelize(
+                parsedGraph.edges
+                    .map { case (u, v) => Edge(u, v, null) }
+            )
         )
-        this.nodesDx = graph.vertices.map(_ => Vec2.zero )
-        this.nodesOldDx = graph.vertices.map(_ => Vec2.zero )
+
+        this.nodesDx = initialGraph.vertices.map { case (i, p) => (i, Vec2.zero) }.cache
+        this.nodesOldDx = initialGraph.vertices.map { case (i, p) => (i, Vec2.zero) }.cache
+        this.nodesMass = initialGraph.vertices
+            .map { case (i, p) => 
+                (
+                    i,
+                    initialGraph.edges.filter {
+                        case e => e.srcId == i - 1 || e.dstId == i - 1
+                    }.count.toLong
+                )
+            }.cache
+
         this.outboundAttractionCompensation =
             if (outboundAttractionDistribution) {
-                graph.vertices.map(v => v.mass).sum / graph.vertices.length
+                this.nodesMass.map { case (i, mass) => mass }.sum / initialGraph.vertices.count
             } else {
                 1.0
             }
 
         this.iterations = iterations
 
-        new MutableGraph[Point2](graph.vertices.map(v => v.pos), graph.edges)
+        new SparkGraph[Point2](initialGraph)
     }
 
-    override def run(i: Int, g: MutableGraph[Point2]): MutableGraph[Point2] = {
+    override def run(i: Int, g: SparkGraph[Point2]): SparkGraph[Point2] = {
 
         val vertices = g.vertices.zipWithIndex.map {
             case (p: Point2, i: Int) => {
@@ -55,7 +70,7 @@ object FA2Spark extends FA2Data with Layouter[MutableGraph] {
         val edges = g.edges
 
         for (i <- vertices.indices) {
-            this.nodesOldDx(i) = nodesDx(i)
+            this.nodesOldDx(i) = this.nodesDx(i)
             this.nodesDx(i) = Vec2.zero
         }
 
@@ -145,8 +160,8 @@ object FA2Spark extends FA2Data with Layouter[MutableGraph] {
         new MutableGraph[Point2](vertices.map(v => v.pos), edges)
     }
 
-    override def end(graph: MutableGraph[Point2], outFilePath: String): Unit = {
-        Pajek.dump(graph.toImmutable, outFilePath)
+    override def end(g: SparkGraph[Point2], outFilePath: String): Unit = {
+        Pajek.dump(g.fromSpark(g.graph), outFilePath)
     }
 
 }

@@ -55,7 +55,7 @@ object FA2Mutable extends FA2Data with Layouter[MutableGraph] {
         val edges = g.edges
 
         for (i <- vertices.indices) {
-            this.nodesOldDx(i) = nodesDx(i)
+            this.nodesOldDx(i) = this.nodesDx(i)
             this.nodesDx(i) = Vec2.zero
         }
 
