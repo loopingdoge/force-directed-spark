@@ -140,7 +140,6 @@ object FA2Mutable extends FA2Data with Layouter[MutableGraph] {
             val factor = this.speed / (1.0 + Math.sqrt(this.speed * swinging))
             vertices(i).pos = vertices(i).pos + (this.nodesDx(i) * factor)
         }
-        var culo = new MutableGraph[Point2](vertices.map(v => v.pos), edges)
         
         new MutableGraph[Point2](vertices.map(v => v.pos), edges)
     }
