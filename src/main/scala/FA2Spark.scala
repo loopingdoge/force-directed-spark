@@ -39,8 +39,8 @@ object FA2Spark extends FA2Data with Layouter[SparkGraph] {
         this.nodesMass = initialGraph.vertices
             .map { case (i, p) => 
                 val mass = parsedGraph.edges
-                    .filter { case (u, v) => u == i - 1 || v == i - 1 }
-                    .length.toInt
+                    .filter { case (u, v) => u == i || v == i }
+                    .length
                 ( i, mass )
             }.cache
 
@@ -58,8 +58,6 @@ object FA2Spark extends FA2Data with Layouter[SparkGraph] {
                 .map { case (id, mass) => mass }
                 .first
 
-
-
         this.iterations = iterations
 
         new SparkGraph[Point2](initialGraph)
@@ -73,8 +71,8 @@ object FA2Spark extends FA2Data with Layouter[SparkGraph] {
 
         this.nodesOldDx = this.nodesDx
         this.nodesDx = this.nodesDx.map { case (i, p) => (i, Vec2.zero) }.cache
-        
-        val getNodePos = (nodeId: VertexId) => 
+
+        val getNodePos = (nodeId: VertexId) =>
             graph.vertices
             .filter { case (id, pos) => id == nodeId }
             .map { case (id, pos) => pos }
