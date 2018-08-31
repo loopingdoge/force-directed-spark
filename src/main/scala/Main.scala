@@ -52,7 +52,7 @@ object Main {
         val spark = SparkSession
             .builder
             .appName("Force Directed Layout")
-            .config("spark.master", "local[*]")
+            .config("spark.master", "local[1]")
             .getOrCreate()
 
         val sc = spark.sparkContext
@@ -79,12 +79,12 @@ object Main {
         println("\n")
         println(s"$algorithmToRun is firing up! Set, ready, go! OwO\n")
         algorithmToRun match {
-            case "SPRING-M" =>  log[ImmutableGraph, SpringMutable.type](SpringMutable, sc, 5, inFilePath, outFilePath)
-            case "SPRING-S" =>  log[SparkGraph, SpringSpark.type](SpringSpark, sc, 5, inFilePath, outFilePath)
-            case "FR-M" =>      log[MutableGraph, FRMutable.type](FRMutable, sc, 5, inFilePath, outFilePath)
-            case "FR-S" =>      log[SparkGraph, FRSpark.type](FRSpark, sc, 5, inFilePath, outFilePath)
-            case "FA2-M" =>       log[MutableGraph, FA2Mutable.type](FA2Mutable, sc, 500, inFilePath, outFilePath)
-            // case "FA2-S" =>       log[MutableGraph, FA2Spark.type](FA2Spark, sc, 500, inFilePath, outFilePath)
+            case "SPRING-M" =>  log[Point2, ImmutableGraph, SpringMutable.type](SpringMutable, sc, 5, inFilePath, outFilePath)
+            case "SPRING-S" =>  log[Point2, SparkGraph, SpringSpark.type](SpringSpark, sc, 5, inFilePath, outFilePath)
+            case "FR-M" =>      log[Point2, MutableGraph, FRMutable.type](FRMutable, sc, 5, inFilePath, outFilePath)
+            case "FR-S" =>      log[Point2, SparkGraph, FRSpark.type](FRSpark, sc, 5, inFilePath, outFilePath)
+            case "FA2-M" =>     log[Point2, MutableGraph, FA2Mutable.type](FA2Mutable, sc, 500, inFilePath, outFilePath)
+            case "FA2-S" =>     log[(Point2, Int), SparkGraph, FA2Spark.type](FA2Spark, sc, 500, inFilePath, outFilePath)
             case name => println(s"$name not recognized")
         }
         println("\n")
@@ -107,7 +107,7 @@ object Main {
         spark.stop()
     }
 
-    def log[T[Point2] <: Graph[Point2], A <: Layouter[T]](algorithm: A, sc: SparkContext, iterations: Int, inFilePath: String, outFilePath: String) {
+    def log[P, T[P] <: Graph[P], A <: Layouter[P, T]](algorithm: A, sc: SparkContext, iterations: Int, inFilePath: String, outFilePath: String) {
         var graph = algorithm.start(sc, inFilePath, iterations)
         for (i <- 0 until iterations) {
             val (_, calcTime) = time {

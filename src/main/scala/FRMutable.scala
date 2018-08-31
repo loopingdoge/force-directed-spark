@@ -1,6 +1,6 @@
 import org.apache.spark._
 
-object FRMutable extends FRData with Layouter[MutableGraph] {
+object FRMutable extends FRData with Layouter[Point2, MutableGraph] {
 
     class FRNode(var pos: Point2, var displacement: Vec2)
 

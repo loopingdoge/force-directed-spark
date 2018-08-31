@@ -2,7 +2,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.graphx.{Graph => XGraph, Edge, VertexId}
 import org.apache.spark.rdd.RDD
 
-object FRSpark extends FRData with Layouter[SparkGraph] {
+object FRSpark extends FRData with Layouter[Point2, SparkGraph] {
 
     private val area = width * length
     private var k: Double = 0.0

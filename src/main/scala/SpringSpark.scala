@@ -8,7 +8,7 @@ import org.apache.spark.graphx.{Graph => XGraph, Edge, VertexId}
 import org.apache.spark.graphx.EdgeTriplet
 import org.apache.spark.rdd.RDD
 
-object SpringSpark extends Layouter[SparkGraph] {
+object SpringSpark extends Layouter[Point2, SparkGraph] {
     val c4 = SpringUtils.c4
     val (width, length) = (SpringUtils.width, SpringUtils.length)
     var nodePairs: RDD[((VertexId, Point2), (VertexId, Point2))] = _

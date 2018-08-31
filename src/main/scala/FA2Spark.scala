@@ -4,7 +4,9 @@ import org.apache.spark.rdd.RDD
 
 import scala.collection.immutable
 
-object FA2Spark extends FA2Data with Layouter[SparkGraph] {
+// RIMUOVERE LE ACTION
+
+object FA2Spark extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
 
     private var speed = 1.0
     private var speedEfficiency = 1.0
@@ -16,7 +18,7 @@ object FA2Spark extends FA2Data with Layouter[SparkGraph] {
     private var getNodeMass: (VertexId) => Int = _
     private var outboundAttractionCompensation = 0.0
     
-    override def start(sc: SparkContext, inFilePath: String, iterations: Int): SparkGraph[Point2] = {
+    override def start(sc: SparkContext, inFilePath: String, iterations: Int): SparkGraph[(Point2, Int)] = {
         // Place vertices at random
         val parsedGraph = Parser.parse(inFilePath)
                 .map { _ => Point2.random }
@@ -25,7 +27,12 @@ object FA2Spark extends FA2Data with Layouter[SparkGraph] {
             sc.parallelize(
                 parsedGraph.vertices
                     .zipWithIndex
-                    .map { case (v, i) => (i.toLong, v) }
+                    .map { case (v, i) => 
+                        val mass = parsedGraph.edges
+                            .filter { case (u, v) => u == i || v == i }
+                            .length
+                        (i.toLong, (v, mass))
+                    }
             ),
             sc.parallelize(
                 parsedGraph.edges
@@ -36,17 +43,19 @@ object FA2Spark extends FA2Data with Layouter[SparkGraph] {
         this.nodesDx = initialGraph.vertices.map { case (i, p) => (i, Vec2.zero) }.cache
         this.nodesOldDx = initialGraph.vertices.map { case (i, p) => (i, Vec2.zero) }.cache
 
-        this.nodesMass = initialGraph.vertices
-            .map { case (i, p) => 
-                val mass = parsedGraph.edges
-                    .filter { case (u, v) => u == i || v == i }
-                    .length
-                ( i, mass )
-            }.cache
+        // this.nodesMass = initialGraph.vertices
+        //     .map { case (i, p) => 
+        //         val mass = parsedGraph.edges
+        //             .filter { case (u, v) => u == i || v == i }
+        //             .length
+        //         ( i, mass )
+        //     }.cache
 
         this.outboundAttractionCompensation =
             if (outboundAttractionDistribution) {
-                this.nodesMass.map { case (i, mass) => mass }.sum / initialGraph.vertices.count
+                initialGraph.vertices.map {
+                    case (i, (pos, mass)) => mass
+                }.sum / initialGraph.vertices.count
             } else {
                 1.0
             }
@@ -60,10 +69,10 @@ object FA2Spark extends FA2Data with Layouter[SparkGraph] {
 
         this.iterations = iterations
 
-        new SparkGraph[Point2](initialGraph)
+        new SparkGraph[(Point2, Int)](initialGraph)
     }
 
-    override def run(i: Int, g: SparkGraph[Point2]): SparkGraph[Point2] = {
+    override def run(i: Int, g: SparkGraph[(Point2, Int)]): SparkGraph[(Point2, Int)] = {
 
         val graph = g.graph
 
@@ -74,8 +83,8 @@ object FA2Spark extends FA2Data with Layouter[SparkGraph] {
 
         val getNodePos = (nodeId: VertexId) =>
             graph.vertices
-            .filter { case (id, pos) => id == nodeId }
-            .map { case (id, pos) => pos }
+            .filter { case (id, data) => id == nodeId }
+            .map { case (id, (pos, mass)) => pos }
             .first
 
         val repulsiveForces: RDD[(VertexId, Vec2)] = graph.vertices
@@ -83,12 +92,8 @@ object FA2Spark extends FA2Data with Layouter[SparkGraph] {
             .cartesian(graph.vertices)
             .filter { case ((id1, _), (id2, _)) => id1 != id2 }
             .flatMap {
-                case ((id1, pos1), (id2, pos2)) =>
-                    val mass1 = this.getNodeMass(id1)
-                    val mass2 =  this.getNodeMass(id2)
-
+                case ((id1, (pos1, mass1)), (id2, (pos2, mass2))) =>
                     val (d1, d2) = repulsiveForce(new FANode(pos1, mass1), new FANode(pos2, mass2))
-
                     this.nodesDx = this.nodesDx
                         .map {
                             case (id, pos) =>
@@ -102,8 +107,7 @@ object FA2Spark extends FA2Data with Layouter[SparkGraph] {
             .reduceByKey((a: Vec2, b: Vec2) => a + b)
 
         val gravityForces = graph.vertices.map {
-            case (id, pos) => 
-                val mass = this.getNodeMass(id)
+            case (id, (pos, mass)) =>
                 val displacement = gravityForce(new FANode(pos, mass))
                 
                 this.nodesDx = this.nodesDx
@@ -144,7 +148,7 @@ object FA2Spark extends FA2Data with Layouter[SparkGraph] {
 
         var (totalSwinging: Double, totalEffectiveTraction: Double) = graph.vertices
             .map {
-                case (id, pos) =>
+                case (id, (pos, mass)) =>
                     val nodeDx = this.nodesDx
                         .filter { case (i, d) => i == id }
                         .map { case (i, d) => d }
@@ -154,8 +158,6 @@ object FA2Spark extends FA2Data with Layouter[SparkGraph] {
                         .filter { case (i, d) => i == id }
                         .map { case (i, d) => d }
                         .first
-
-                    val mass = this.getNodeMass(id)
 
                     val swinging = (nodeOldDx - nodeDx).length * mass
                     val effectiveTraction = 0.5 * mass * (nodeOldDx - nodeDx).length
@@ -217,10 +219,9 @@ object FA2Spark extends FA2Data with Layouter[SparkGraph] {
         //     val factor = this.speed / (1.0 + Math.sqrt(this.speed * swinging))
         //     vertices(i).pos = vertices(i).pos + (this.nodesDx(i) * factor)
         // }
-        //  TODO modificare graph
         val modifiedGraph = graph
             .mapVertices {
-                case (id, pos) =>
+                case (id, (pos, mass)) =>
                     val nodeDx = this.nodesDx
                         .filter { case (i, d) => i == id }
                         .map { case (i, d) => d }
@@ -231,18 +232,18 @@ object FA2Spark extends FA2Data with Layouter[SparkGraph] {
                         .map { case (i, d) => d }
                         .first
 
-                    val mass = this.getNodeMass(id)
                     val swinging = mass * (nodeOldDx - nodeDx).length
                     val factor = this.speed / (1.0 + Math.sqrt(this.speed * swinging))
                     val newPos = pos + (nodeDx * factor)
-                    newPos
+                    (newPos, mass)
             }
         
-         new SparkGraph[Point2](modifiedGraph)
+         new SparkGraph[(Point2, Int)](modifiedGraph)
     }
 
-    override def end(g: SparkGraph[Point2], outFilePath: String): Unit = {
-        Pajek.dump(ImmutableGraph.fromSpark(g.graph), outFilePath)
+    override def end(g: SparkGraph[(Point2, Int)], outFilePath: String): Unit = {
+        val outGraph = g.graph.mapVertices { case (id, (pos, mass)) => pos }
+        Pajek.dump(ImmutableGraph.fromSpark(outGraph), outFilePath)
     }
 
 }

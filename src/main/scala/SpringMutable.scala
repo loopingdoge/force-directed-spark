@@ -8,7 +8,7 @@ import org.apache.spark.graphx.{Graph => XGraph, Edge, VertexId}
 import org.apache.spark.graphx.EdgeTriplet
 import org.apache.spark.rdd.RDD
 
-object SpringMutable extends Layouter[ImmutableGraph] {
+object SpringMutable extends Layouter[Point2, ImmutableGraph] {
     val c4 = SpringUtils.c4
     val (width, length) = (SpringUtils.width, SpringUtils.length)
     var vertices: Array[(Double, Double)] = new Array(0)
