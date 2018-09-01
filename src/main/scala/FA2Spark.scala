@@ -81,6 +81,7 @@ object FA2Spark extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
         this.nodesOldDx = this.nodesDx
         this.nodesDx = this.nodesDx.map { case (i, p) => (i, Vec2.zero) }.cache
 
+        // TODO Remove
         val getNodePos = (nodeId: VertexId) =>
             graph.vertices
             .filter { case (id, data) => id == nodeId }
@@ -94,14 +95,14 @@ object FA2Spark extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
             .flatMap {
                 case ((id1, (pos1, mass1)), (id2, (pos2, mass2))) =>
                     val (d1, d2) = repulsiveForce(new FANode(pos1, mass1), new FANode(pos2, mass2))
-                    this.nodesDx = this.nodesDx
-                        .map {
-                            case (id, pos) =>
-                                if (id == id1) (id, pos + d1)
-                                else if (id == id2) (id, pos + d2)
-                                else (id, pos)
-                        }
-
+                    // DONE
+                    // this.nodesDx = this.nodesDx
+                    //     .map {
+                    //         case (id, pos) =>
+                    //             if (id == id1) (id, pos + d1)
+                    //             else if (id == id2) (id, pos + d2)
+                    //             else (id, pos)
+                    //     }                    
                     Vector( (id1, d1), (id2, d2) )
             }
             .reduceByKey((a: Vec2, b: Vec2) => a + b)
@@ -110,12 +111,13 @@ object FA2Spark extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
             case (id, (pos, mass)) =>
                 val displacement = gravityForce(new FANode(pos, mass))
                 
-                this.nodesDx = this.nodesDx
-                    .map {
-                        case (nId, pos) =>
-                            if (nId == id) (nId, pos + displacement)
-                            else (nId, pos)
-                    }
+                // DONE
+                // this.nodesDx = this.nodesDx
+                //     .map {
+                //         case (nId, pos) =>
+                //             if (nId == id) (nId, pos + displacement)
+                //             else (nId, pos)
+                //     }
 
                 (id, displacement)
         }
@@ -133,14 +135,14 @@ object FA2Spark extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
                         new FANode(getNodePos(id1), mass2),
                         this.outboundAttractionCompensation
                     )
-
-                    this.nodesDx = this.nodesDx
-                        .map {
-                            case (id, pos) =>
-                                if (id == id1) (id, pos + d1)
-                                else if (id == id2) (id, pos + d2)
-                                else (id, pos)
-                        }
+                    // DONE
+                    // this.nodesDx = this.nodesDx
+                    //     .map {
+                    //         case (id, pos) =>
+                    //             if (id == id1) (id, pos + d1)
+                    //             else if (id == id2) (id, pos + d2)
+                    //             else (id, pos)
+                    //     }
 
                     Vector( (id1, d1), (id2, d2))
             }
@@ -149,15 +151,11 @@ object FA2Spark extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
         var (totalSwinging: Double, totalEffectiveTraction: Double) = graph.vertices
             .map {
                 case (id, (pos, mass)) =>
-                    val nodeDx = this.nodesDx
-                        .filter { case (i, d) => i == id }
-                        .map { case (i, d) => d }
-                        .first
 
-                    val nodeOldDx = this.nodesOldDx
-                        .filter { case (i, d) => i == id }
-                        .map { case (i, d) => d }
-                        .first
+                    // val nodeOldDx = this.nodesOldDx
+                    //     .filter { case (i, d) => i == id }
+                    //     .map { case (i, d) => d }
+                    //     .first
 
                     val swinging = (nodeOldDx - nodeDx).length * mass
                     val effectiveTraction = 0.5 * mass * (nodeOldDx - nodeDx).length
@@ -211,6 +209,16 @@ object FA2Spark extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
         val maxRise = 0.5   // Max rise: 50%
         this.speed = this.speed + Math.min(targetSpeed - this.speed, maxRise * this.speed)
 
+
+        // TODO finirlo
+        // Sum the repulsion and attractive displacements
+        val sumDisplacements = repulsiveForces
+            .union(gravityForcess)
+            .union(attractiveForces)
+            .reduceByKey(_ + _)
+            // Collect as a Map in order to get the displacement given the nodeID
+            .collectAsMap
+
         // // Apply forces
         // for (i <- vertices.indices) {
         //     // Adaptive auto-speed: the speed of each node is lowered
@@ -222,15 +230,15 @@ object FA2Spark extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
         val modifiedGraph = graph
             .mapVertices {
                 case (id, (pos, mass)) =>
-                    val nodeDx = this.nodesDx
-                        .filter { case (i, d) => i == id }
-                        .map { case (i, d) => d }
-                        .first
+                    // val nodeDx = this.nodesDx
+                    //     .filter { case (i, d) => i == id }
+                    //     .map { case (i, d) => d }
+                    //     .first
 
-                    val nodeOldDx = this.nodesOldDx
-                        .filter { case (i, d) => i == id }
-                        .map { case (i, d) => d }
-                        .first
+                    // val nodeOldDx = this.nodesOldDx
+                    //     .filter { case (i, d) => i == id }
+                    //     .map { case (i, d) => d }
+                    //     .first
 
                     val swinging = mass * (nodeOldDx - nodeDx).length
                     val factor = this.speed / (1.0 + Math.sqrt(this.speed * swinging))
