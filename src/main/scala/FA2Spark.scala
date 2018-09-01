@@ -4,8 +4,6 @@ import org.apache.spark.rdd.RDD
 
 import scala.collection.immutable
 
-// RIMUOVERE LE ACTION
-
 object FA2Spark extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
 
     private var speed = 1.0
@@ -13,7 +11,6 @@ object FA2Spark extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
     private var iterations = 0
 
     private var nVertices: Int = _
-// TODO? immutable
     private var nodesDx: Map[VertexId, Vec2] = _
     private var nodesOldDx: Map[VertexId, Vec2] = _
     private var getNodeMass: (VertexId) => Int = _
@@ -43,17 +40,8 @@ object FA2Spark extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
             )
         )
 
-        // TODO verificaaarreee
         this.nodesDx = Map( (0 until this.nVertices).map(i => i.toLong -> Vec2.zero) : _* )
         this.nodesOldDx = Map( (0 until this.nVertices).map(i => i.toLong -> Vec2.zero) : _* )
-
-        // this.nodesMass = initialGraph.vertices
-        //     .map { case (i, p) => 
-        //         val mass = parsedGraph.edges
-        //             .filter { case (u, v) => u == i || v == i }
-        //             .length
-        //         ( i, mass )
-        //     }.cache
 
         this.outboundAttractionCompensation =
             if (outboundAttractionDistribution) {
@@ -70,7 +58,6 @@ object FA2Spark extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
     }
 
     override def run(i: Int, g: SparkGraph[(Point2, Int)]): SparkGraph[(Point2, Int)] = {
-
         val graph = g.graph
 
         this.nodesOldDx = this.nodesDx
@@ -93,9 +80,9 @@ object FA2Spark extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
                 (id, displacement)
         }
 
-
         val attractiveForces = graph.edges
             .map { case Edge(u, v, null) => ((u, v), null) }
+            // Join using (u, v) as key, to get each vertex data
             .join(
                 graph.vertices
                     .cartesian(graph.vertices)
@@ -115,7 +102,7 @@ object FA2Spark extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
             }
             .reduceByKey((a: Vec2, b: Vec2) => a + b)
 
-        // Sum the repulsion and attractive displacements
+        // Sum the repulsion, attraction and gravity displacements
         val sumDisplacements = repulsiveForces
             .union(gravityForces)
             .union(attractiveForces)
