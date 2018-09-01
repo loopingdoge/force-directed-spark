@@ -16,7 +16,6 @@ object FA2Spark extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
 // TODO? immutable
     private var nodesDx: Map[VertexId, Vec2] = _
     private var nodesOldDx: Map[VertexId, Vec2] = _
-    private var nodesMass: RDD[(VertexId, Int)] = _
     private var getNodeMass: (VertexId) => Int = _
     private var outboundAttractionCompensation = 0.0
     
@@ -44,7 +43,7 @@ object FA2Spark extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
             )
         )
 
-        // TODOOOOO verificaaarreee
+        // TODO verificaaarreee
         this.nodesDx = Map( (0 until this.nVertices).map(i => i.toLong -> Vec2.zero) : _* )
         this.nodesOldDx = Map( (0 until this.nVertices).map(i => i.toLong -> Vec2.zero) : _* )
 
@@ -65,13 +64,6 @@ object FA2Spark extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
                 1.0
             }
 
-        // TODO Remove
-        this.getNodeMass = (nodeId: VertexId) => 
-            this.nodesMass
-                .filter { case (id, mass) => id == nodeId }
-                .map { case (id, mass) => mass }
-                .first
-
         this.iterations = iterations
 
         new SparkGraph[(Point2, Int)](initialGraph)
@@ -83,13 +75,6 @@ object FA2Spark extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
 
         this.nodesOldDx = this.nodesDx
         this.nodesDx = Map( (0 until this.nVertices).map(i => i.toLong -> Vec2.zero) : _* )
-
-        // TODO Remove
-        val getNodePos = (nodeId: VertexId) =>
-            graph.vertices
-            .filter { case (id, data) => id == nodeId }
-            .map { case (id, (pos, mass)) => pos }
-            .first
 
         val repulsiveForces: RDD[(VertexId, Vec2)] = graph.vertices
             // Generate every possible node pairs
@@ -108,25 +93,28 @@ object FA2Spark extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
                 (id, displacement)
         }
 
-        val attractiveForces = graph.edges
-            .flatMap{
-                case e =>
-                    val id1 = e.srcId
-                    val id2 = e.dstId
-                    val mass1 = this.getNodeMass(id1)
-                    val mass2 =  this.getNodeMass(id2)
 
+        val attractiveForces = graph.edges
+            .map { case Edge(u, v, null) => ((u, v), null) }
+            .join(
+                graph.vertices
+                    .cartesian(graph.vertices)
+                    .map {
+                        case ((id1, (pos1, mass1)), (id2, (pos2, mass2))) =>
+                            ( (id1, id2), ( (pos1, mass1), (pos2, mass2) ) )
+                    }
+            )
+            .flatMap {
+                case ((id1, id2), (null, ((pos1, mass1), (pos2, mass2)))) =>
                     val (d1, d2) = attractiveForce(
-                        new FANode(getNodePos(id1), mass1),
-                        new FANode(getNodePos(id1), mass2),
+                        new FANode(pos1, mass1),
+                        new FANode(pos2, mass2),
                         this.outboundAttractionCompensation
                     )
                     Vector( (id1, d1), (id2, d2))
             }
             .reduceByKey((a: Vec2, b: Vec2) => a + b)
 
-
-       // TODO finirlo
         // Sum the repulsion and attractive displacements
         val sumDisplacements = repulsiveForces
             .union(gravityForces)
@@ -149,7 +137,6 @@ object FA2Spark extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
                     (sw1 + sw2, et1 + et2)
                 }
             }
-        // QUESTO TYPECHECKA PER CULO
 
         // Optimize jitter tolerance
         // The 'right' jitter tolerance for this network. Bigger networks need more tolerance.
@@ -188,18 +175,10 @@ object FA2Spark extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
         }
 
         // But the speed shoudn't rise too much too quickly, since it would make the convergence drop dramatically.
-        // TODO parallelizzarlo?
         val maxRise = 0.5   // Max rise: 50%
         this.speed = this.speed + Math.min(targetSpeed - this.speed, maxRise * this.speed)
 
-        // // Apply forces
-        // for (i <- vertices.indices) {
-        //     // Adaptive auto-speed: the speed of each node is lowered
-        //     // when the node swings.
-        //     val swinging = vertices(i).mass * (this.nodesOldDx(i) - this.nodesDx(i)).length
-        //     val factor = this.speed / (1.0 + Math.sqrt(this.speed * swinging))
-        //     vertices(i).pos = vertices(i).pos + (this.nodesDx(i) * factor)
-        // }
+        // Apply forces
         val modifiedGraph = graph
             .mapVertices {
                 case (id, (pos, mass)) =>
