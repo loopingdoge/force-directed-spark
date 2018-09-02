@@ -176,6 +176,7 @@ object FA2Spark extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
                     (newPos, mass)
             }
         
+        modifiedGraph.checkpoint()
         new SparkGraph[(Point2, Int)](modifiedGraph)
     }
 
