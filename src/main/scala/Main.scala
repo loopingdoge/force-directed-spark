@@ -16,9 +16,13 @@ object Main {
         (result, t1 - t0)
     }
 
-    def dump(filePath: String) {
+    def dump(filePath: String, isCloud: Boolean) {
         val conf = new Configuration()
-        val fs: FileSystem = FileSystem.get(conf)
+        val fs: FileSystem =
+            if (isCloud)
+                new Path("gs://force-directed-bucket").getFileSystem(conf)
+            else
+                FileSystem.get(conf)
         val file = fs.create(new Path(filePath))
         val bw = new PrintWriter(file)
         
@@ -32,27 +36,45 @@ object Main {
 
         if( args.length < 2 ) {            
             print("""
-    Usage: run algorithm inFile [outFile]
+    Usage: run algorithm inFile [outFile, isCloud, nCPUs]
 
         - algorithm | SPRING-M, SPRING-S, FR-M, FR-S, FA2-M
         - inFile | input file name, picked from the "data" folder
         - outFile | optional output file name, saved in the "out" folder
+        - isCloud | optional whether or not is executing on GCloud
+        - nCPUs | optional CPUs number to use
 
             """)
             return
         }
 
+        val isCloud = args.length >= 4 && args(3) == "cloud"
+
         val algorithmToRun = args(0)
-        val inFilePath = "data/" + args(1)
+        val inFilePath =
+            if (isCloud)
+                "gs://force-directed-bucket/data/" + args(1)
+            else
+                "data/" + args(1)
         val outFileName = if( args.length == 2 ) args(1).replace(".txt", ".net") else args(2)
-        val outFilePath = "out/" + outFileName
+        val outFilePath =
+            if (isCloud)
+                "gs://force-directed-bucket/out/" + outFileName
+            else
+                "out/" + outFileName
+
+        val nCPUs =
+            if (args.length >= 5)
+                args(5)
+            else
+                "*"
 
 
         // Spark initialization
         val spark = SparkSession
             .builder
             .appName("Force Directed Layout")
-            .config("spark.master", "local[1]")
+            .config("spark.master", s"local[$nCPUs]")
             .getOrCreate()
 
         val sc = spark.sparkContext
@@ -100,7 +122,7 @@ object Main {
                     .substring(0, inFilePath.lastIndexOf("."))
             }
 
-        dump(s"out/timings-$algorithmToRun-$filename.csv")
+        dump(s"out/timings-$algorithmToRun-$filename.csv", isCloud)
 
         // println(s"Elapsed time: $calcTime ms")
 
