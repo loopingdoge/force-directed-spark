@@ -82,9 +82,17 @@ object Main {
             .config(conf)
             .getOrCreate()
 
+
+        val checkPointDir =
+            if (isCloud)
+                "gs://force-directed-bucket/out/checkpoint/"
+            else
+                "out/checkpoint"
+                
         val sc = spark.sparkContext
         sc.setLogLevel("WARN")
-        sc.setCheckpointDir("out/checkpoint/")
+        sc.setCheckpointDir(checkPointDir)
+
 
         /* val (_, calcTime) = time {
             algorithmToRun match {
