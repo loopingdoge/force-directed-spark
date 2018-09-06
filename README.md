@@ -67,7 +67,9 @@ $ sbt package
 $ gcloud dataproc clusters create cluster-name
 ```
 
-TODO: Check the available parameters.
+```
+gcloud dataproc clusters create cluster-name --master-machine-type n1-standard-4 --worker-machine-type n1-standard-4 --num-workers 4 --zone europe-west3-a
+```
 
 ### Copy the `.jar` to the bucket
 
@@ -78,10 +80,7 @@ $ gsutil cp target/scala-2.11/WordCount.jar gs://force-directed-bucket
 ### Submit Job (example)
 
 ```
-$ gcloud dataproc jobs submit spark
-    --cluster pietroster
-    --jar gs://force-directed-bucket/WordCount.jar
-    -- gs://force-directed-bucket/pietronostro.txt gs://force-directed-bucket/wordcount-out
+$ gcloud dataproc jobs submit spark --cluster pietroster --jar gs://force-directed-bucket/WordCount.jar -- gs://force-directed-bucket/pietronostro.txt gs://force-directed-bucket/wordcount-out
 ```
 
 Note: The parameters after `--` are the jar program's input arguments.
