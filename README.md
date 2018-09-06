@@ -7,7 +7,7 @@
 
 ## VSCode Setup
 
-- Make sure you have `JDK_HOME` or `JAVA_HOME` env variable correctly set
+- Make sure you have Java 8 installed and `JDK_HOME` or `JAVA_HOME` env variable correctly set
 - Add this line to `~/.sbt/1.0/plugins/plugins.sbt` (create it if necessary):
 
 ```
@@ -46,7 +46,13 @@ $ sbt
 Run the program giving the arguments, i.e.:
 
 ```
-> run data/pietronostro.txt out/wordcount-out
+> run algorithm inFile [outFile, isCloud, nCPUs]
+
+    - algorithm | SPRING-M, SPRING-S, FR-M, FR-S, FA2-M
+    - inFile | input file name, picked from the "data" folder
+    - outFile | optional output file name, saved in the "out" folder
+    - isCloud | optional whether or not is executing on GCloud
+    - nCPUs | optional CPUs number to use
 ```
 
 ## Default storage bucket
@@ -64,23 +70,31 @@ $ sbt package
 ### Create Cluster
 
 ```
-$ gcloud dataproc clusters create cluster-name
+$ gcloud dataproc clusters create cluster-name \
+    --master-machine-type n1-standard-4 \
+    --worker-machine-type n1-standard-4 \
+    --num-workers 4 \
+    --zone europe-west3-a
 ```
+Note: `n1-standard-4` machines have 4 vCPU and 15GB of memory
+
+### Upload the `.jar` to the bucket
 
 ```
-gcloud dataproc clusters create cluster-name --master-machine-type n1-standard-4 --worker-machine-type n1-standard-4 --num-workers 4 --zone europe-west3-a
+$ gsutil cp target/scala-2.11/force-directed-spark_2.11-0.1.jar gs://force-directed-bucket/force-directed-spark.jar
 ```
-
-### Copy the `.jar` to the bucket
+### Upload the input data to the bucket
 
 ```
-$ gsutil cp target/scala-2.11/WordCount.jar gs://force-directed-bucket
+$ gsutil cp data/simple-graph.net gs://force-directed-bucket/data/simple-graph.net
 ```
 
 ### Submit Job (example)
 
 ```
-$ gcloud dataproc jobs submit spark --cluster pietroster --jar gs://force-directed-bucket/WordCount.jar -- gs://force-directed-bucket/pietronostro.txt gs://force-directed-bucket/wordcount-out
+$ gcloud dataproc jobs submit spark --cluster cluster-name \
+    --jar gs://force-directed-bucket/force-directed-spark.jar \
+    -- FR-S infile.net outfile.net cloud
 ```
 
 Note: The parameters after `--` are the jar program's input arguments.
@@ -90,7 +104,7 @@ Note: The parameters after `--` are the jar program's input arguments.
 #### List
 
 ```
-$ gsutil ls gs://force-directed-bucket/wordcount-out/
+$ gsutil ls gs://force-directed-bucket/out/
 ```
 
 #### Print
