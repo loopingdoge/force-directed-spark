@@ -1,5 +1,6 @@
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.SparkContext
+import org.apache.spark.SparkConf
 
 import java.io.PrintWriter
 import org.apache.hadoop.conf.Configuration
@@ -69,11 +70,16 @@ object Main {
             else
                 "*"
 
+        val conf = new SparkConf()
+        conf.set("spark-serializer", "org.apache.spark.serializer.KryoSerializer")
+        conf.registerKryoClasses(Array(classOf[Point2], classOf[Vec2]))
+        if (!isCloud) conf.setMaster(s"local[$nCPUs]")
+
         // Spark initialization
         val spark = SparkSession
             .builder
             .appName("Force Directed Layout")
-            .config("spark.master", s"local[$nCPUs]")
+            .config(conf)
             .getOrCreate()
 
         val checkPointDir =
