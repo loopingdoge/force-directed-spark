@@ -77,9 +77,17 @@ object Main {
             .config("spark.master", s"local[$nCPUs]")
             .getOrCreate()
 
+
+        val checkPointDir =
+            if (isCloud)
+                "gs://force-directed-bucket/out/checkpoint/"
+            else
+                "out/checkpoint"
+                
         val sc = spark.sparkContext
         sc.setLogLevel("ERROR")
-        sc.setCheckpointDir("out/checkpoint/")
+        sc.setCheckpointDir(checkPointDir)
+
 
         /* val (_, calcTime) = time {
             algorithmToRun match {
