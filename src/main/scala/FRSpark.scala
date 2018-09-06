@@ -8,9 +8,9 @@ object FRSpark extends FRData with Layouter[Point2, SparkGraph] {
     private var k: Double = 0.0
     private var iterations: Int = 0
 
-    override def start (sc: SparkContext, inFilePath: String, iterations: Int): SparkGraph[Point2] = {
+    override def start (sc: SparkContext, fs: FileSystem,  inFilePath: String, iterations: Int): SparkGraph[Point2] = {
         // Place vertices at random
-        val parsedGraph = Parser.parse(inFilePath)
+        val parsedGraph = Parser.parse(fs, inFilePath)
             .map { _ => new Point2(Math.random() * width, Math.random() * length) }
 
         // Create the spark graph
@@ -98,8 +98,8 @@ object FRSpark extends FRData with Layouter[Point2, SparkGraph] {
         new SparkGraph[Point2](modifiedGraph)
     }
 
-    override def end(g: SparkGraph[Point2], outFilePath: String): Unit = {
-        Pajek.dump(ImmutableGraph.fromSpark(g.graph), outFilePath)
+    override def end(g: SparkGraph[Point2], fs: FileSystem,  outFilePath: String): Unit = {
+        Pajek.dump(ImmutableGraph.fromSpark(g.graph), fs, outFilePath)
     }
 
 }

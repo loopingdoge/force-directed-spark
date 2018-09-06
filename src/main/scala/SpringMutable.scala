@@ -13,8 +13,8 @@ object SpringMutable extends Layouter[Point2, ImmutableGraph] {
     val (width, length) = (SpringUtils.width, SpringUtils.length)
     var vertices: Array[(Double, Double)] = new Array(0)
 
-    def start(sc: SparkContext, inFilePath: String, iterations: Int): ImmutableGraph[Point2] = {
-        val parsedGraph = Parser.parse(inFilePath)
+    def start(sc: SparkContext, fs: FileSystem,  inFilePath: String, iterations: Int): ImmutableGraph[Point2] = {
+        val parsedGraph = Parser.parse(fs, inFilePath)
             .map { _ => new Point2(Math.random, Math.random) }
 
         val vertexNum = parsedGraph.vertices.size
@@ -64,12 +64,12 @@ object SpringMutable extends Layouter[Point2, ImmutableGraph] {
         new ImmutableGraph((0 until vertexNum) map (i => new Point2(vertices(i)._1, vertices(i)._2)) toVector, edges)
     }
 
-    def end(graph: ImmutableGraph[Point2], outFilePath: String) = {
+    def end(graph: ImmutableGraph[Point2], fs: FileSystem,  outFilePath: String) = {
         val (vertexNum, edges) = (graph.vertices.size, graph.edges)
 
         val layoutedVertices = (0 until vertexNum) map (i => new Point2(vertices(i)._1, vertices(i)._2)) toVector
         val (maxX, maxY) = ((layoutedVertices map(_.x)) max, (layoutedVertices map(_.y)) max)
         val layoutedNorm = layoutedVertices map (p => new Point2(p.x/maxX * width, p.y/maxY * length))
-        Pajek.dump(new ImmutableGraph(layoutedNorm, edges), outFilePath)
+        Pajek.dump(new ImmutableGraph(layoutedNorm, edges), fs, outFilePath)
     }
 }

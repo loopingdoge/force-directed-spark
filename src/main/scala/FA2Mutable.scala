@@ -14,9 +14,9 @@ object FA2Mutable extends FA2Data with Layouter[Point2, MutableGraph] {
     private var nodesOldDx: Array[Vec2] = new Array[Vec2](0)
     private var outboundAttractionCompensation = 0.0
     
-    override def start(sc: SparkContext, inFilePath: String, iterations: Int): MutableGraph[Point2] = {
+    override def start(sc: SparkContext, fs: FileSystem, inFilePath: String, iterations: Int): MutableGraph[Point2] = {
         // Place vertices at random
-        val parsedGraph = Parser.parse(inFilePath)
+        val parsedGraph = Parser.parse(fs, inFilePath)
                 .map { _ => Point2.random }
         
         val graph = MutableGraph.fromImmutable(
@@ -144,8 +144,8 @@ object FA2Mutable extends FA2Data with Layouter[Point2, MutableGraph] {
         new MutableGraph[Point2](vertices.map(v => v.pos), edges)
     }
 
-    override def end(g: MutableGraph[Point2], outFilePath: String): Unit = {
-        Pajek.dump(g.toImmutable, outFilePath)
+    override def end(g: MutableGraph[Point2],  fs: FileSystem, outFilePath: String): Unit = {
+        Pajek.dump(g.toImmutable, fs, outFilePath)
     }
 
 }

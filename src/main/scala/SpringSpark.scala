@@ -91,8 +91,8 @@ object SpringSpark extends Layouter[Point2, SparkGraph] {
         Pajek.dump(new ImmutableGraph(normVertices, parsedGraph.edges), outFilePath)
     } */
 
-    def start(sc: SparkContext, inFilePath: String, iterations: Int): SparkGraph[Point2] = {
-        val parsedGraph = Parser.parse(inFilePath) map { _ => new Point2() }
+    def start(sc: SparkContext, fs: FileSystem,  inFilePath: String, iterations: Int): SparkGraph[Point2] = {
+        val parsedGraph = Parser.parse(fs, inFilePath) map { _ => new Point2() }
 
         // Create the spark graph
         val initialGraph = XGraph(
@@ -148,7 +148,7 @@ object SpringSpark extends Layouter[Point2, SparkGraph] {
         new SparkGraph[Point2](modifiedGraph)
     }
 
-    def end(g: SparkGraph[Point2], outFilePath: String) = {
+    def end(g: SparkGraph[Point2], fs: FileSystem,  outFilePath: String) = {
         val xgraph: XGraph[Point2, Null] = g.graph
 
         val maxX = (xgraph.vertices.collect map {
@@ -160,6 +160,6 @@ object SpringSpark extends Layouter[Point2, SparkGraph] {
 
         Pajek.dump(ImmutableGraph.fromSpark(xgraph mapVertices {
             case (_, pos) => new Point2(pos.x/maxX * width, pos.y/maxY * length)
-        }), outFilePath)
+        }), fs, outFilePath)
     }
 }

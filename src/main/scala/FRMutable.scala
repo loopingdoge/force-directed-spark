@@ -8,9 +8,9 @@ object FRMutable extends FRData with Layouter[Point2, MutableGraph] {
     private var k: Double = 0.0
     private var iterations: Int = 0
 
-    override def start(sc: SparkContext, inFilePath: String, iterations: Int): MutableGraph[Point2] = {
+    override def start(sc: SparkContext, fs: FileSystem,  inFilePath: String, iterations: Int): MutableGraph[Point2] = {
         // Place vertices at random
-        val parsedGraph = Parser.parse(inFilePath)
+        val parsedGraph = Parser.parse(fs, inFilePath)
             .map { _ => new Point2(Math.random() * width, Math.random() * length) }
 
         // Create the mutable graph
@@ -62,7 +62,7 @@ object FRMutable extends FRData with Layouter[Point2, MutableGraph] {
         new MutableGraph[Point2](vertices.map(v => v.pos), edges)
     }
 
-    override def end(graph: MutableGraph[Point2], outFilePath: String): Unit = {
-        Pajek.dump(graph.toImmutable, outFilePath)
+    override def end(graph: MutableGraph[Point2], fs: FileSystem,  outFilePath: String): Unit = {
+        Pajek.dump(graph.toImmutable, fs, outFilePath)
     }
 }

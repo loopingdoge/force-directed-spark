@@ -16,9 +16,9 @@ object FA2Spark extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
     private var getNodeMass: (VertexId) => Int = _
     private var outboundAttractionCompensation = 0.0
     
-    override def start(sc: SparkContext, inFilePath: String, iterations: Int): SparkGraph[(Point2, Int)] = {
+    override def start(sc: SparkContext, fs: FileSystem,  inFilePath: String, iterations: Int): SparkGraph[(Point2, Int)] = {
         // Place vertices at random
-        val parsedGraph = Parser.parse(inFilePath)
+        val parsedGraph = Parser.parse(fs, inFilePath)
                 .map { _ => Point2.random }
 
         this.nVertices = parsedGraph.vertices.length
@@ -180,9 +180,9 @@ object FA2Spark extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
         new SparkGraph[(Point2, Int)](modifiedGraph)
     }
 
-    override def end(g: SparkGraph[(Point2, Int)], outFilePath: String): Unit = {
+    override def end(g: SparkGraph[(Point2, Int)], fs: FileSystem,  outFilePath: String): Unit = {
         val outGraph = g.graph.mapVertices { case (id, (pos, mass)) => pos }
-        Pajek.dump(ImmutableGraph.fromSpark(outGraph), outFilePath)
+        Pajek.dump(ImmutableGraph.fromSpark(outGraph), fs, outFilePath)
     }
 
 }
