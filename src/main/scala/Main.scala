@@ -64,16 +64,16 @@ object Main {
             else
                 "*"
 
-        val conf = new SparkConf()
-        conf.set("spark-serializer", "org.apache.spark.serializer.KryoSerializer")
-        conf.registerKryoClasses(Array(classOf[Point2], classOf[Vec2]))
-        if (!isCloud) conf.setMaster(s"local[$nCPUs]")
+        val sparkConf = new SparkConf()
+        sparkConf.set("spark-serializer", "org.apache.spark.serializer.KryoSerializer")
+        sparkConf.registerKryoClasses(Array(classOf[Point2], classOf[Vec2]))
+        if (!isCloud) sparkConf.setMaster(s"local[$nCPUs]")
 
         // Spark initialization
         val spark = SparkSession
             .builder
             .appName("Force Directed Layout")
-            .config(conf)
+            .config(sparkConf)
             .getOrCreate()
 
         val checkPointDir =
