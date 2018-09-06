@@ -7,6 +7,7 @@ object FRSpark extends FRData with Layouter[Point2, SparkGraph] {
     private val area = width * length
     private var k: Double = 0.0
     private var iterations: Int = 0
+    private val checkpointInterval = 25
 
     override def start (sc: SparkContext, inFilePath: String, iterations: Int): SparkGraph[Point2] = {
         // Place vertices at random
@@ -94,7 +95,10 @@ object FRSpark extends FRData with Layouter[Point2, SparkGraph] {
                 newPos
         }
 
-        modifiedGraph.checkpoint()
+        if (i % checkpointInterval == 0) {
+            modifiedGraph.checkpoint()
+        }
+
         new SparkGraph[Point2](modifiedGraph)
     }
 
