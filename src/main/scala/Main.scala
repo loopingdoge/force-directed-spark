@@ -1,5 +1,6 @@
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.SparkContext
+import org.apache.spark.SparkConf
 
 import java.io.PrintWriter
 import org.apache.hadoop.conf.Configuration
@@ -69,16 +70,20 @@ object Main {
             else
                 "*"
 
+        val conf = new SparkConf()
+        conf.set("spark-serializer", "org.apache.spark.serializer.KryoSerializer")
+        conf.registerKryoClasses(Array(classOf[Point2], classOf[Vec2]))
+        if (!isCloud) conf.setMaster(s"local[$nCPUs]")
 
         // Spark initialization
         val spark = SparkSession
             .builder
             .appName("Force Directed Layout")
-            .config("spark.master", s"local[$nCPUs]")
+            .config(conf)
             .getOrCreate()
 
         val sc = spark.sparkContext
-        sc.setLogLevel("ERROR")
+        sc.setLogLevel("WARN")
         sc.setCheckpointDir("out/checkpoint/")
 
         /* val (_, calcTime) = time {
@@ -104,7 +109,7 @@ object Main {
             case "SPRING-M" =>  log[Point2, ImmutableGraph, SpringMutable.type](SpringMutable, sc, 5, inFilePath, outFilePath)
             case "SPRING-S" =>  log[Point2, SparkGraph, SpringSpark.type](SpringSpark, sc, 5, inFilePath, outFilePath)
             case "FR-M" =>      log[Point2, MutableGraph, FRMutable.type](FRMutable, sc, 5, inFilePath, outFilePath)
-            case "FR-S" =>      log[Point2, SparkGraph, FRSpark.type](FRSpark, sc, 5, inFilePath, outFilePath)
+            case "FR-S" =>      log[Point2, SparkGraph, FRSpark.type](FRSpark, sc, 500, inFilePath, outFilePath)
             case "FA2-M" =>     log[Point2, MutableGraph, FA2Mutable.type](FA2Mutable, sc, 500, inFilePath, outFilePath)
             case "FA2-S" =>     log[(Point2, Int), SparkGraph, FA2Spark.type](FA2Spark, sc, 500, inFilePath, outFilePath)
             case name => println(s"$name not recognized")
