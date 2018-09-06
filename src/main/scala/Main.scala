@@ -65,7 +65,7 @@ object Main {
 
         val nCPUs =
             if (args.length >= 5)
-                args(5)
+                args(4)
             else
                 "*"
 
