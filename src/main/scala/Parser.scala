@@ -93,7 +93,6 @@ object SNAP {
                 => Math.max(maxId, Math.max(edge._1, edge._2)))
 
         val vertices = (1 to nVertices).toVector
-        print(s"$edges \n$nVertices \n $vertices \n\n")
         
         new ImmutableGraph(vertices, edges)
     }
