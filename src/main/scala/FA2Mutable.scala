@@ -1,8 +1,8 @@
 import org.apache.spark._
 import org.apache.spark.graphx.{Edge, VertexId, Graph => XGraph}
 import org.apache.spark.rdd.RDD
-
 import scala.collection.immutable
+import org.apache.hadoop.fs.FileSystem
 
 object FA2Mutable extends FA2Data with Layouter[Point2, MutableGraph] {
 

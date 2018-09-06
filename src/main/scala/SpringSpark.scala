@@ -7,6 +7,7 @@ import org.apache.spark._
 import org.apache.spark.graphx.{Graph => XGraph, Edge, VertexId}
 import org.apache.spark.graphx.EdgeTriplet
 import org.apache.spark.rdd.RDD
+import org.apache.hadoop.fs.FileSystem
 
 object SpringSpark extends Layouter[Point2, SparkGraph] {
     val c4 = SpringUtils.c4

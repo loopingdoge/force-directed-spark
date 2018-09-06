@@ -3,11 +3,9 @@
 import scala.io.Source
 import java.io._
 
-import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 
 object Parser {
-    val conf = new Configuration()
 
     def parse(fs: FileSystem, fileName: String): ImmutableGraph[Int] = {
         val stream = fs.open(new Path(fileName))
@@ -22,7 +20,6 @@ object Parser {
 }
 
 object Pajek {
-    val conf = new Configuration()
 
     def parse(lines: Iterator[String]): ImmutableGraph[Int] = {
         val nVertices = lines.next.split(" ")(1).toInt

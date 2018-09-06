@@ -1,4 +1,5 @@
 import org.apache.spark._
+import org.apache.hadoop.fs.FileSystem
 
 object FRMutable extends FRData with Layouter[Point2, MutableGraph] {
 

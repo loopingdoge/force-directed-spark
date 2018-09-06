@@ -2,6 +2,7 @@ import org.apache.spark._
 import org.apache.spark.graphx.{Edge, VertexId, Graph => XGraph}
 import org.apache.spark.rdd.RDD
 
+import org.apache.hadoop.fs.FileSystem
 import scala.collection.immutable
 
 object FA2Spark extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
@@ -184,5 +185,4 @@ object FA2Spark extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
         val outGraph = g.graph.mapVertices { case (id, (pos, mass)) => pos }
         Pajek.dump(ImmutableGraph.fromSpark(outGraph), fs, outFilePath)
     }
-
 }

@@ -1,6 +1,7 @@
 import org.apache.spark.SparkContext
 import org.apache.spark.graphx.{Graph => XGraph, Edge, VertexId}
 import org.apache.spark.rdd.RDD
+import org.apache.hadoop.fs.FileSystem
 
 object FRSpark extends FRData with Layouter[Point2, SparkGraph] {
 
@@ -101,5 +102,4 @@ object FRSpark extends FRData with Layouter[Point2, SparkGraph] {
     override def end(g: SparkGraph[Point2], fs: FileSystem,  outFilePath: String): Unit = {
         Pajek.dump(ImmutableGraph.fromSpark(g.graph), fs, outFilePath)
     }
-
 }
