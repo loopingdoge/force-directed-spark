@@ -8,27 +8,27 @@ import org.apache.hadoop.fs.{FileSystem, Path}
 
 object Parser {
     val conf = new Configuration()
+    // val fs: FileSystem = new Path("gs://force-directed-bucket").getFileSystem(conf)
     val fs: FileSystem = FileSystem.get(conf)
 
     def parse(fileName: String): ImmutableGraph[Int] = {
-        val source = Source.fromFile(fileName)
+        val stream = fs.open(new Path(fileName))
+        val lines = Source.fromInputStream(stream).getLines
 
-        val lines = source.getLines
-        if( lines.next.startsWith("*Vertices") ) {
-            Pajek.parse(source.reset)
+        if( fileName.endsWith(".net") ) {
+            Pajek.parse(lines)
         } else {
-            SNAP.parse(source.reset)
+            SNAP.parse(lines)
         }
     }
 }
 
 object Pajek {
     val conf = new Configuration()
-//    val fs: FileSystem = new Path("gs://force-directed-bucket").getFileSystem(conf)
+    // val fs: FileSystem = new Path("gs://force-directed-bucket").getFileSystem(conf)
     val fs: FileSystem = FileSystem.get(conf)
 
-    def parse(source: Source): ImmutableGraph[Int] = {
-        val lines = source.getLines
+    def parse(lines: Iterator[String]): ImmutableGraph[Int] = {
         val nVertices = lines.next.split(" ")(1).toInt
         val vertices = (0 until nVertices).toVector
 
@@ -77,9 +77,8 @@ object Pajek {
 
 object SNAP {
 
-    def parse(source: Source): ImmutableGraph[Int] = {
-        val lines = source
-            .getLines
+    def parse(l: Iterator[String]): ImmutableGraph[Int] = {
+        val lines = l
             .dropWhile( line => line.startsWith("#"))
 
         val edges = lines
