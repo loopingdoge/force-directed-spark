@@ -65,16 +65,16 @@ object FA2Spark extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
         this.nodesDx = Map( (0 until this.nVertices).map(i => i.toLong -> Vec2.zero) : _* )
 
 
-        val repulsiveForces: RDD[(VertexId, Vec2)] = graph.triplets
-            .flatMap( t => {
-                val n1 = t.srcAttr
-                val n2 = t.dstAttr
-                val (d1, d2) = repulsiveForce(
-                    new FANode(n1._1, n1._2),
-                    new FANode(n2._1, n2._2)
-                ) 
-                Vector( (t.srcId, d1), (t.dstId, d2) )
-            }).reduceByKey((a: Vec2, b: Vec2) => a + b)
+        val repulsiveForces: RDD[(VertexId, Vec2)] = graph.vertices
+            // Generate every possible node pairs
+            .cartesian(graph.vertices)
+            .filter { case ((id1, _), (id2, _)) => id1 < id2 }
+            .flatMap {
+                case ((id1, (pos1, mass1)), (id2, (pos2, mass2))) =>
+                    val (d1, d2) = repulsiveForce(new FANode(pos1, mass1), new FANode(pos2, mass2))                
+                    Vector( (id1, d1), (id2, d2) )
+            }
+            .reduceByKey((a: Vec2, b: Vec2) => a + b)
 
         val gravityForces = graph.vertices.map {
             case (id, (pos, mass)) =>
@@ -94,28 +94,6 @@ object FA2Spark extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
                 Vector( (t.srcId, d1), (t.dstId, d2) )
             })
             .reduceByKey((a: Vec2, b: Vec2) => a + b)
-
-        // val attractiveForces = graph.edges
-        //     .map { case Edge(u, v, null) => ((u, v), null) }
-        //     // Join using (u, v) as key, to get each vertex data
-        //     .join(
-        //         graph.vertices
-        //             .cartesian(graph.vertices)
-        //             .map {
-        //                 case ((id1, (pos1, mass1)), (id2, (pos2, mass2))) =>
-        //                     ( (id1, id2), ( (pos1, mass1), (pos2, mass2) ) )
-        //             }
-        //     )
-        //     .flatMap {
-        //         case ((id1, id2), (null, ((pos1, mass1), (pos2, mass2)))) =>
-        //             val (d1, d2) = attractiveForce(
-        //                 new FANode(pos1, mass1),
-        //                 new FANode(pos2, mass2),
-        //                 this.outboundAttractionCompensation
-        //             )
-        //             Vector( (id1, d1), (id2, d2))
-        //     }
-        //     .reduceByKey((a: Vec2, b: Vec2) => a + b)
 
         // Sum the repulsion, attraction and gravity displacements
         val sumDisplacements = repulsiveForces
