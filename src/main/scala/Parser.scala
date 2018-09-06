@@ -8,10 +8,8 @@ import org.apache.hadoop.fs.{FileSystem, Path}
 
 object Parser {
     val conf = new Configuration()
-    // val fs: FileSystem = new Path("gs://force-directed-bucket").getFileSystem(conf)
-    val fs: FileSystem = FileSystem.get(conf)
 
-    def parse(fileName: String): ImmutableGraph[Int] = {
+    def parse(fs: FileSystem, fileName: String): ImmutableGraph[Int] = {
         val stream = fs.open(new Path(fileName))
         val lines = Source.fromInputStream(stream).getLines
 
@@ -25,8 +23,6 @@ object Parser {
 
 object Pajek {
     val conf = new Configuration()
-    // val fs: FileSystem = new Path("gs://force-directed-bucket").getFileSystem(conf)
-    val fs: FileSystem = FileSystem.get(conf)
 
     def parse(lines: Iterator[String]): ImmutableGraph[Int] = {
         val nVertices = lines.next.split(" ")(1).toInt
@@ -40,7 +36,7 @@ object Pajek {
         new ImmutableGraph(vertices, edges)
     }
 
-    def dump(graph: ImmutableGraph[Point2], filepath: String): Unit = {
+    def dump(graph: ImmutableGraph[Point2], fs: FileSystem, filepath: String): Unit = {
 
         def round(num: Double): Double = {
             BigDecimal(num).setScale(2, BigDecimal.RoundingMode.HALF_UP).toDouble
