@@ -17,13 +17,7 @@ object Main {
         (result, t1 - t0)
     }
 
-    def dump(filePath: String, isCloud: Boolean) {
-        val conf = new Configuration()
-        val fs: FileSystem =
-            if (isCloud)
-                new Path("gs://force-directed-bucket").getFileSystem(conf)
-            else
-                FileSystem.get(conf)
+    def dump(fs: FileSystem, filePath: String) {
         val file = fs.create(new Path(filePath))
         val bw = new PrintWriter(file)
         
@@ -92,23 +86,6 @@ object Main {
         sc.setLogLevel("WARN")
         sc.setCheckpointDir(checkPointDir)
 
-        /* val (_, calcTime) = time {
-            algorithmToRun match {
-                case "FR" => FruchtermanReingold.runSpark(sc, 500, inFilePath, outFilePath)
-                case "SPRING" => 
-                    var graph = SPRING.start(sc, inFilePath)
-                    for (i <- 0 until 100) {
-                        val t0 = System.currentTimeMillis()
-                        graph = SPRING.run(i, graph)
-                        val t1 = System.currentTimeMillis()
-                        println(s"iteration $i took ${t1 - t0}ms")
-                    }
-                    SPRING.end(graph, outFilePath)
-
-                    //SPRING.runSpark(sc, 500, inFilePath, outFilePath)
-            }
-        } */
-
         val conf = new Configuration()
         val fs: FileSystem = 
             if (isCloud)
@@ -140,9 +117,7 @@ object Main {
                     .substring(0, inFilePath.lastIndexOf("."))
             }
 
-        dump(s"out/timings-$algorithmToRun-$filename.csv", isCloud)
-
-        // println(s"Elapsed time: $calcTime ms")
+        dump(fs, s"out/timings-$algorithmToRun-$filename.csv")
 
         spark.stop()
     }
