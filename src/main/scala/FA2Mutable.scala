@@ -31,7 +31,7 @@ object FA2Mutable extends FA2Data with Layouter[Point2, MutableGraph] {
         this.nodesOldDx = graph.vertices.map(_ => Vec2.zero )
         this.outboundAttractionCompensation =
             if (outboundAttractionDistribution) {
-                graph.vertices.map(v => v.mass).sum / graph.vertices.length
+                graph.vertices.map(v => v.mass).sum.toFloat / graph.vertices.length
             } else {
                 1.0
             }
