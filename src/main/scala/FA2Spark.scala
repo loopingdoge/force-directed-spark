@@ -10,6 +10,7 @@ object FA2Spark extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
     private var speed = 1.0
     private var speedEfficiency = 1.0
     private var iterations = 0
+    private val checkpointInterval = 25
 
     private var nVertices: Int = _
     private var nodesOldDx: scala.collection.Map[VertexId, Vec2] = _
@@ -157,15 +158,20 @@ object FA2Spark extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
             .mapVertices {
                 case (id, (pos, mass)) =>
                     val nodeDx = sumDisplacements(id)
-                    val swinging = mass * (this.nodesOldDx(id) - nodeDx).length
-                    val factor = this.speed / (1.0 + Math.sqrt(this.speed * swinging))
+                    val swinging = mass * (nodesOldDx(id) - nodeDx).length
+                    val factor = speed / (1.0 + Math.sqrt(speed * swinging))
                     val newPos = pos + (nodeDx * factor)
                     (newPos, mass)
-            }  
+            }
 
         this.nodesOldDx = sumDisplacements
 
-        modifiedGraph.checkpoint()
+        if (i % checkpointInterval == 0) {
+            modifiedGraph.checkpoint()
+        }
+
+        modifiedGraph.vertices.collect
+
         new SparkGraph[(Point2, Int)](modifiedGraph)
     }
 
