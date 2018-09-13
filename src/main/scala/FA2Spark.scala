@@ -50,7 +50,7 @@ object FA2Spark extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
             } else {
                 1.0
             }
-        print(s"${this.outboundAttractionCompensation} \n\n")
+            
         this.iterations = iterations
 
         new SparkGraph[(Point2, Int)](initialGraph)
@@ -111,7 +111,7 @@ object FA2Spark extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
                     (sw1 + sw2, et1 + et2)
                 }
             }
-
+            
         // Optimize jitter tolerance
         // The 'right' jitter tolerance for this network. Bigger networks need more tolerance.
         // Denser networks need less tolerance. Totally empiric.
