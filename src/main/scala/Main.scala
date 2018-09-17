@@ -44,6 +44,7 @@ object Main {
         }
 
         val isCloud = args.length >= 4 && args(3) == "cloud"
+        val isCluster = args.length >= 4 && args(3) == "cluster"
 
         val algorithmToRun = args(0)
         val inFilePath =
@@ -67,7 +68,7 @@ object Main {
         val sparkConf = new SparkConf()
         sparkConf.set("spark-serializer", "org.apache.spark.serializer.KryoSerializer")
         sparkConf.registerKryoClasses(Array(classOf[Point2], classOf[Vec2]))
-        if (!isCloud) sparkConf.setMaster(s"local[$nCPUs]")
+        if (!isCloud && !isCluster) sparkConf.setMaster(s"local[$nCPUs]")
 
         // Spark initialization
         val spark = SparkSession
@@ -96,12 +97,13 @@ object Main {
         println("\n")
         println(s"$algorithmToRun is firing up! Set, ready, go! OwO\n")
         algorithmToRun match {
-            case "SPRING-M" =>  log[Point2, ImmutableGraph, SpringMutable.type](SpringMutable, sc, 5, fs, inFilePath, outFilePath)
+            case "SPRING-M" =>  log[Point2, ImmutableGraph, SpringMutable.type](SpringMutable, sc, 500, fs, inFilePath, outFilePath)
             case "SPRING-S" =>  log[Point2, SparkGraph, SpringSpark.type](SpringSpark, sc, 5, fs, inFilePath, outFilePath)
-            case "FR-M" =>      log[Point2, MutableGraph, FRMutable.type](FRMutable, sc, 5, fs, inFilePath, outFilePath)
-            case "FR-S" =>      log[Point2, SparkGraph, FRSpark.type](FRSpark, sc, 5, fs, inFilePath, outFilePath)
+            case "FR-M" =>      log[Point2, MutableGraph, FRMutable.type](FRMutable, sc, 500, fs, inFilePath, outFilePath)
+            case "FR-S" =>      log[Point2, SparkGraph, FRSpark.type](FRSpark, sc, 500, fs, inFilePath, outFilePath)
+            case "FR-P" =>      log[Point2, SparkGraph, FRSpark2.type](FRSpark2, sc, 42, fs, inFilePath, outFilePath)
             case "FA2-M" =>     log[Point2, MutableGraph, FA2Mutable.type](FA2Mutable, sc, 500, fs, inFilePath, outFilePath)
-            case "FA2-S" =>     log[(Point2, Int), SparkGraph, FA2Spark.type](FA2Spark, sc, 500, fs, inFilePath, outFilePath)
+            case "FA2-S" =>     log[(Point2, Int), SparkGraph, FA2Spark.type](FA2Spark, sc, 100, fs, inFilePath, outFilePath)
             case name => println(s"$name not recognized")
         }
         println("\n")

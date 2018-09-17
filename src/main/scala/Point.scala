@@ -11,6 +11,7 @@ class Point2(val x: Double = Math.random, val y: Double = Math.random) extends S
     def +(a: Double) = new Point2(x + a, y + a)
     def scale(a: Double) = new Point2(x * a, y * a)
     def *(a: Double) = new Point2(x * a, y * a)
+    def /(a: Double) = new Point2(x / a, y / a)
     // shift and scale independently
     def shift(a: Double, b: Double) = new Point2(x + a, y + b)
     def scale(a: Double, b: Double) = new Point2(x * a, y * b)
@@ -43,6 +44,7 @@ class Point3(val x: Double = Math.random, val y: Double = Math.random, val z: Do
     def +(a: Double) = new Point3(x + a, y + a, z + a)
     def scale(a: Double) = new Point3(x * a, y * a, z * a)
     def *(a: Double) = new Point3(x * a, y * a, z * a)
+    def /(a: Double) = new Point3(x / a, y / a, z / a)
     // shift and scale independently
     def shift(a: Double, b: Double, c: Double) = new Point3(x + a, y + b, z + c)
     def scale(a: Double, b: Double, c: Double) = new Point3(x * a, y * b, z * c)
