@@ -1,5 +1,5 @@
-import org.apache.spark.SparkContext
-import org.apache.spark.graphx.{Edge, PartitionStrategy, VertexId, VertexRDD, Graph => XGraph}
+import org.apache.spark.{SparkContext, graphx}
+import org.apache.spark.graphx.{Edge, GraphLoader, PartitionStrategy, VertexId, VertexRDD, Graph => XGraph}
 import org.apache.spark.rdd.RDD
 import org.apache.hadoop.fs.FileSystem
 import org.apache.spark.storage.StorageLevel
@@ -10,7 +10,7 @@ object FRSpark2 extends FRData with Layouter[Point2, SparkGraph] {
     private var k: Double = 0.0
     private var iterations: Int = 0
     private val checkpointInterval = 1
-    private val nCentroids = 300
+    private val nCentroids = 3000
     private val nPartitions = 4
 
     private var centroids: Array[Point2] = Array()
@@ -18,8 +18,8 @@ object FRSpark2 extends FRData with Layouter[Point2, SparkGraph] {
 
     private var sparkContext: SparkContext = _
 
-    def closestCentroid(pos: Point2): (Int, Point2, Double) = {
-        val (closestPos, closestDist, closestId) =
+    def closestCentroid(pos: Point2): (Int, Point2) = {
+        val (closestPos, _, closestId) =
             centroids
             .zipWithIndex
             .foldLeft((Point2.zero, Double.MaxValue, -1)) {
@@ -31,7 +31,7 @@ object FRSpark2 extends FRData with Layouter[Point2, SparkGraph] {
                         (accPos, accDist, accId)
                     }
             }
-        (closestId, closestPos, closestDist)
+        (closestId, closestPos)
     }
 
     override def start (sc: SparkContext, fs: FileSystem,  inFilePath: String, iterations: Int): SparkGraph[Point2] = {
@@ -47,14 +47,12 @@ object FRSpark2 extends FRData with Layouter[Point2, SparkGraph] {
                 parsedGraph.vertices
                     .zipWithIndex
                     .map { case (v, i) => (i.toLong, v) }
-            ).repartition(nPartitions),
+            ),
             sc.parallelize(
                 parsedGraph.edges
                     .map { case (u, v) => Edge(u, v, null) }
             )
         )
-
-        println(sc.defaultParallelism, sc.defaultMinPartitions, initialGraph.vertices.getNumPartitions)
 
         this.k = Math.sqrt(area / initialGraph.numVertices) // Optimal pairwise distance
         this.iterations = iterations
@@ -83,16 +81,22 @@ object FRSpark2 extends FRData with Layouter[Point2, SparkGraph] {
         val graph = g.graph
         val t = temperature(i, iterations)
 
+        println(graph.vertices.getNumPartitions, graph.edges.getNumPartitions)
+
         val verticesWithCentroid = graph.vertices
             .map {
                 case (id, pos) =>
-                    val (cId, cPos, dist) = closestCentroid(pos)
-                    ((id, pos), (cId, cPos, dist))
+                    val (cId, cPos) = closestCentroid(pos)
+                    ((id, pos), (cId, cPos))
             }
+            .cache()
+
+        verticesWithCentroid.take(1)
+
 
         val repulsionDisplacements = verticesWithCentroid
             .map {
-                case ((id, pos), (_, cPos, _)) =>
+                case ((id, pos), (_, cPos)) =>
                     val delta = cPos - pos
                     val displacement = delta.normalize * repulsiveForce(k, delta.length) * 100
                     (id, displacement)
@@ -121,7 +125,6 @@ object FRSpark2 extends FRData with Layouter[Point2, SparkGraph] {
                 val displacement = delta.normalize * attractiveForce(k, delta.length)
                 Vector((t.srcId, -displacement), (t.dstId, displacement))
             }
-            .reduceByKey(_ + _)
 
         // Sum the repulsion and attractive displacements
         val sumDisplacements = repulsionDisplacements
@@ -129,34 +132,38 @@ object FRSpark2 extends FRData with Layouter[Point2, SparkGraph] {
 //            .union(gravityDisplacements)
             .union(repulsionCenter)
             .reduceByKey(_ + _)
-            // Collect as a Map in order to get the displacement given the nodeID
-            .collectAsMap
 
         // Obtain a new graph by summing the displacements to the node current position
         // while doing some weird stuff to align them and prevent them to go
         // outside of the frame area
-        val modifiedGraph = graph.mapVertices {
-            case (id, pos) =>
-                val vDispl = sumDisplacements(id)
-                val newPos = pos + vDispl.normalize * Math.min(t, vDispl.length)
+        val modifiedGraph = graph.joinVertices(sumDisplacements) {
+            case (id, pos, displ) =>
+                val newPos = pos + displ.normalize * Math.min(t, displ.length)
                 newPos
         }
 
+//        val modifiedGraph = graph.mapVertices {
+//            case (id, pos) =>
+//                val vDispl = Vec2.zero
+//                val newPos = pos + vDispl.normalize * Math.min(t, vDispl.length)
+//                newPos
+//        }
+
         val verticesCentroidDistribution = verticesWithCentroid
             .map {
-                case ((vId, vPos), (cId, cPos, dist)) =>
+                case ((vId, vPos), (cId, cPos)) =>
                     (cId, 1)
             }
             .reduceByKey(_ + _)
-            .collectAsMap()
 
         centroids = verticesWithCentroid
             .map {
-                case ((vId, vPos), (cId, cPos, dist)) =>
+                case ((vId, vPos), (cId, cPos)) =>
                     (cId, vPos)
             }
             .reduceByKey(_ + _)
-            .map { case (id, pos) => pos / verticesCentroidDistribution(id) }
+            .join(verticesCentroidDistribution)
+            .map { case (id, (pos, count)) => pos / count }
             .collect()
 
         center = graph.vertices
@@ -171,6 +178,8 @@ object FRSpark2 extends FRData with Layouter[Point2, SparkGraph] {
 
         sparkContext.broadcast(centroids)
         sparkContext.broadcast(center)
+
+        modifiedGraph.vertices.collect()
 
         if (i % checkpointInterval == 0) {
             modifiedGraph.checkpoint()
