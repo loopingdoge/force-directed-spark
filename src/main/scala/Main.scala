@@ -28,7 +28,7 @@ object Main {
     }
 
     def main(args: Array[String]) {
-
+        val startT = System.currentTimeMillis()
         if( args.length < 2 ) {            
             print("""
     Usage: run algorithm inFile [outFile, isCloud, nCPUs]
@@ -67,6 +67,7 @@ object Main {
 
         val sparkConf = new SparkConf()
         sparkConf.set("spark-serializer", "org.apache.spark.serializer.KryoSerializer")
+//        sparkConf.set("spark.dynamicAllocation.enabled", "false")
         sparkConf.registerKryoClasses(Array(classOf[Point2], classOf[Vec2]))
         if (!isCloud && !isCluster) sparkConf.setMaster(s"local[$nCPUs]")
 
@@ -101,13 +102,16 @@ object Main {
             case "SPRING-S" =>  log[Point2, SparkGraph, SpringSpark.type](SpringSpark, sc, 5, fs, inFilePath, outFilePath)
             case "FR-M" =>      log[Point2, MutableGraph, FRMutable.type](FRMutable, sc, 500, fs, inFilePath, outFilePath)
             case "FR-S" =>      log[Point2, SparkGraph, FRSpark.type](FRSpark, sc, 500, fs, inFilePath, outFilePath)
-            case "FR-P" =>      log[Point2, SparkGraph, FRSpark2.type](FRSpark2, sc, 42, fs, inFilePath, outFilePath)
+            case "FR-P" =>      log[Point2, SparkGraph, FRSpark2.type](FRSpark2, sc, 63, fs, inFilePath, outFilePath)
             case "FA2-M" =>     log[Point2, MutableGraph, FA2Mutable.type](FA2Mutable, sc, 500, fs, inFilePath, outFilePath)
             case "FA2-S" =>     log[(Point2, Int), SparkGraph, FA2Spark.type](FA2Spark, sc, 100, fs, inFilePath, outFilePath)
             case name => println(s"$name not recognized")
         }
         println("\n")
         println(s"$algorithmToRun has ended! I hope you liked it senpai UmU\n")
+
+        val endT = System.currentTimeMillis()
+        println(s"${endT - startT}ms")
 
         val filename =
             if (inFilePath.contains("/") && inFilePath.lastIndexOf("/") != inFilePath.length) {
