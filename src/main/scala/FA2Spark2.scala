@@ -13,7 +13,7 @@ object FA2Spark2 extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
     private val checkpointInterval = 25
 
     private var nVertices: Int = _
-    private var nodesOldDx: scala.collection.Map[VertexId, Vec2] = _
+    private var nodesOldDispl: scala.collection.Map[VertexId, Vec2] = _
     private var getNodeMass: (VertexId) => Int = _
     private var outboundAttractionCompensation = 0.0
     
@@ -60,7 +60,7 @@ object FA2Spark2 extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
             )
         ).partitionBy(PartitionStrategy.EdgePartition2D)
 
-        this.nodesOldDx = Map( (0 until this.nVertices).map(i => i.toLong -> Vec2.zero) : _* )
+        this.nodesOldDispl = Map( (0 until this.nVertices).map(i => i.toLong -> Vec2.zero) : _* )
 
         this.outboundAttractionCompensation =
             if (outboundAttractionDistribution) {
@@ -125,23 +125,26 @@ object FA2Spark2 extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
                 ) 
                 Vector( (t.srcId, d1), (t.dstId, d2) )
             })
-            .reduceByKey((a: Vec2, b: Vec2) => a + b)
+            .reduceByKey(_ + _)
 
         // Sum the repulsion, attraction and gravity displacements
-        val sumDisplacements = repulsiveForces
+        val sdisplacements = repulsiveForces
             .union(gravityForces)
             .union(attractiveForces)
             .reduceByKey(_ + _)
+
+        val sumDisplacements = sdisplacements
             // Collect as a Map in order to get the displacement given the nodeID
             .collectAsMap
 
+        // TODO
         var (totalSwinging: Double, totalEffectiveTraction: Double) = graph.vertices
             .map {
                 case (id, (pos, mass)) =>
-                    val nodeDx = sumDisplacements(id)
-                    val nodeOldDx = this.nodesOldDx(id)
-                    val swinging = (nodeOldDx - nodeDx).length * mass
-                    val effectiveTraction = 0.5 * mass * (nodeOldDx + nodeDx).length
+                    val nodeDispl = sumDisplacements(id)
+                    val nodeOldDispl = this.nodesOldDispl(id)
+                    val swinging = (nodeOldDispl - nodeDispl).length * mass
+                    val effectiveTraction = 0.5 * mass * (nodeOldDispl + nodeDispl).length
                     (swinging, effectiveTraction)
             }
             .reduce {
@@ -191,23 +194,38 @@ object FA2Spark2 extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
         this.speed = this.speed + Math.min(targetSpeed - this.speed, maxRise * this.speed)
 
         // Apply forces
-        val modifiedGraph = graph
-            .mapVertices {
-                case (id, (pos, mass)) =>
-                    val nodeDx = sumDisplacements(id)
-                    val swinging = mass * (nodesOldDx(id) - nodeDx).length
-                    val factor = speed / (1.0 + Math.sqrt(speed * swinging))
-                    val newPos = pos + (nodeDx * factor)
-                    (newPos, mass)
-            }
-
-        this.nodesOldDx = sumDisplacements
-
-        if (i % checkpointInterval == 0) {
-            modifiedGraph.checkpoint()
+        val modifiedGraph = graph.joinVertices(sdisplacements) {
+            case (id, (pos, mass), displ) =>
+                val swinging = mass * (nodesOldDispl(id) - displ).length
+                val factor = speed / (1.0 + Math.sqrt(speed * swinging))
+                val newPos = pos + (displ * factor)
+                (newPos, mass)
         }
 
-        modifiedGraph.vertices.collect
+        this.nodesOldDispl = sumDisplacements
+
+        val verticesCentroidDistribution = verticesWithCentroid
+            .map {
+                case (id, (vPos, vMass, (cId, cPos, cMass))) =>
+                    (cId, 1)
+            }
+            .reduceByKey(_ + _)
+            .collectAsMap()
+
+        centroids = verticesWithCentroid
+            .map {
+                case (vId, (vPos, vMass, (cId, cPos, cMass))) =>
+                    (cId, (vPos, cMass))
+            }
+            .reduceByKey{ (a, b) => 
+                val (pos1, mass) = a
+                val (pos2, _) = b
+                (pos1 + pos2, mass)
+            }
+            .collect()
+            .map {
+                case (id, (pos, mass)) => (pos / verticesCentroidDistribution(id), mass)
+            }
 
         new SparkGraph[(Point2, Int)](modifiedGraph)
     }
