@@ -4,7 +4,7 @@
 */
 
 import org.apache.spark._
-import org.apache.spark.graphx.{Graph => XGraph, Edge, VertexId}
+import org.apache.spark.graphx.{Edge, GraphLoader, PartitionStrategy, VertexId, VertexRDD, Graph => XGraph}
 import org.apache.spark.graphx.EdgeTriplet
 import org.apache.spark.rdd.RDD
 import org.apache.hadoop.fs.FileSystem
@@ -28,27 +28,28 @@ object SpringSpark extends Layouter[Point2, SparkGraph] {
                 parsedGraph.edges
                     .map { case (u, v) => Edge(u, v, null) }
             )
-        )
-        nodePairs = initialGraph.vertices.cartesian(initialGraph.vertices).filter {
-            case ((id1, _), (id2, _)) => id1 != id2
-        }.cache
+        ).partitionBy(PartitionStrategy.EdgePartition2D)
 
         new SparkGraph[Point2](initialGraph)
     }
 
     def run(iteration: Int, g: SparkGraph[Point2]): SparkGraph[Point2] = {
-        val graph: XGraph[Point2, Null] = g.graph
+        val graph = g.graph
+        val nodePairs = graph.vertices.cartesian(graph.vertices)
+            .filter {
+                case ((id1, _), (id2, _)) => id1 < id2
+            }
 
-        val repulsionDisplacements: RDD[(VertexId, Vec2)] = this.nodePairs
-        .map {
-            case ((id1, pos1), (id2, pos2)) =>
+        val repulsionDisplacements = nodePairs
+            .map { v =>
+                val ((id1, pos1), (id2, pos2)) = v
                 val delta = pos1 - pos2
                 val displacement = delta.normalize * SpringUtils.repulsiveForce(delta.length) * c4
                 (id1, displacement)
-        }
-        .reduceByKey((a: Vec2, b: Vec2) => a + b)
+            }
+            .reduceByKey(_ + _)
 
-        val attractiveDisplacements: RDD[(VertexId, Vec2)] = graph.triplets
+        val attractiveDisplacements = graph.triplets
             .flatMap { t =>
                 val delta = t.srcAttr - t.dstAttr
                 val displacement = delta.normalize * SpringUtils.attractiveForce(delta.length) * c4
@@ -59,12 +60,10 @@ object SpringSpark extends Layouter[Point2, SparkGraph] {
         val sumDisplacements = repulsionDisplacements
             .union(attractiveDisplacements)
             .reduceByKey(_ + _)
-            .collectAsMap
-
-        val modifiedGraph = graph.mapVertices {
-            case (id, pos) =>
-                val vDispl = sumDisplacements(id)
-                val newPos = pos + vDispl
+        
+        val modifiedGraph = graph.joinVertices(sumDisplacements) {
+            case (id, pos, displ) =>
+                val newPos = pos + displ
                 newPos
         }
 
