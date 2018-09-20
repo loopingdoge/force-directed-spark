@@ -1,8 +1,7 @@
 import org.apache.spark.{SparkContext, graphx}
-import org.apache.spark.graphx.{Edge, GraphLoader, PartitionStrategy, VertexId, VertexRDD, Graph => XGraph}
+import org.apache.spark.graphx.{Edge, PartitionStrategy, VertexId, Graph => XGraph}
 import org.apache.spark.rdd.RDD
 import org.apache.hadoop.fs.FileSystem
-import org.apache.spark.storage.StorageLevel
 
 object FRSpark2 extends FRData with Layouter[Point2, SparkGraph] {
 
@@ -12,8 +11,6 @@ object FRSpark2 extends FRData with Layouter[Point2, SparkGraph] {
 
     private var centroids: Array[Point2] = Array()
     private var center: Point2 = Point2.zero
-
-    private var sparkContext: SparkContext = _
 
     def closestCentroid(pos: Point2): (Int, Point2) = {
         val (closestPos, _, closestId) =
@@ -35,8 +32,6 @@ object FRSpark2 extends FRData with Layouter[Point2, SparkGraph] {
         // Place vertices at random
         val parsedGraph = Parser.parse(fs, inFilePath)
             .map { _ => new Point2(Math.random() * width, Math.random() * length) }
-
-        sparkContext = sc
 
         // Create the spark graph
         val initialGraph = XGraph(
