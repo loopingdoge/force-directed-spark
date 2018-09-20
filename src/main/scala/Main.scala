@@ -101,9 +101,10 @@ object Main {
             case "SPRING-S" =>  log[Point2, SparkGraph, SpringSpark.type](SpringSpark, sc, 5, fs, inFilePath, outFilePath)
             case "FR-M" =>      log[Point2, MutableGraph, FRMutable.type](FRMutable, sc, 500, fs, inFilePath, outFilePath)
             case "FR-S" =>      log[Point2, SparkGraph, FRSpark.type](FRSpark, sc, 500, fs, inFilePath, outFilePath)
-            case "FR-P" =>      log[Point2, SparkGraph, FRSpark2.type](FRSpark2, sc, 5, fs, inFilePath, outFilePath)
+            case "FR-C" =>      log[Point2, SparkGraph, FRSpark2.type](FRSpark2, sc, 5, fs, inFilePath, outFilePath)
             case "FA2-M" =>     log[Point2, MutableGraph, FA2Mutable.type](FA2Mutable, sc, 500, fs, inFilePath, outFilePath)
             case "FA2-S" =>     log[(Point2, Int), SparkGraph, FA2Spark.type](FA2Spark, sc, 100, fs, inFilePath, outFilePath)
+            case "FA2-C" =>     log[(Point2, Int), SparkGraph, FA2Spark2.type](FA2Spark2, sc, 5, fs, inFilePath, outFilePath)
             case name => println(s"$name not recognized")
         }
         println("\n")
