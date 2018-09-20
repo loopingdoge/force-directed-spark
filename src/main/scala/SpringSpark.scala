@@ -37,7 +37,7 @@ object SpringSpark extends Layouter[Point2, SparkGraph] {
         val graph = g.graph
         val nodePairs = graph.vertices.cartesian(graph.vertices)
             .filter {
-                case ((id1, _), (id2, _)) => id1 < id2
+                case ((id1, _), (id2, _)) => id1 != id2
             }
 
         val repulsionDisplacements = nodePairs
