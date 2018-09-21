@@ -10,11 +10,9 @@ object FA2Spark2 extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
     private var speed = 1.0
     private var speedEfficiency = 1.0
     private var iterations = 0
-    private val checkpointInterval = 25
 
     private var nVertices: Int = _
-    private var nodesOldDispl: org.apache.spark.rdd.RDD[(Long, Vec2)] = _
-    private var getNodeMass: (VertexId) => Int = _
+    private var nodesDispls: org.apache.spark.rdd.RDD[(VertexId, (Vec2, Vec2))] = _
     private var outboundAttractionCompensation = 0.0
     
     private var centroids: Array[(Point2, Int)] = Array()
@@ -60,7 +58,7 @@ object FA2Spark2 extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
             )
         ).partitionBy(PartitionStrategy.EdgePartition2D)
 
-        this.nodesOldDispl = initialGraph.vertices.map { case(id, _) => (id, Vec2.zero) }
+        this.nodesDispls = initialGraph.vertices.map { case(id, _) => (id, (Vec2.zero, Vec2.zero)) }
 
         this.outboundAttractionCompensation =
             if (outboundAttractionDistribution) {
@@ -133,11 +131,16 @@ object FA2Spark2 extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
             .union(attractiveForces)
             .reduceByKey(_ + _)
 
-        var (totalSwinging: Double, totalEffectiveTraction: Double) = graph.vertices
-            .join(sumDisplacements)
-            .join(nodesOldDispl)
+        this.nodesDispls = this.nodesDispls.join(sumDisplacements)
             .map {
-                case (id, (((pos, mass), displ), oldDispl)) =>
+                case (id, ((displ, oldDispl), newDispl)) =>
+                    (id, (newDispl, displ))
+            }
+
+        var (totalSwinging: Double, totalEffectiveTraction: Double) = graph.vertices
+            .join(this.nodesDispls)
+            .map {
+                case (id, ((pos, mass), (displ, oldDispl))) =>
                     val swinging = (oldDispl - displ).length * mass
                     val effectiveTraction = 0.5 * mass * (oldDispl + displ).length
                     (swinging, effectiveTraction)
@@ -189,26 +192,16 @@ object FA2Spark2 extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
         this.speed = this.speed + Math.min(targetSpeed - this.speed, maxRise * this.speed)
 
         // Apply forces
-        val modifiedVertex = graph.vertices
-            .join(sumDisplacements)
-            .join(nodesOldDispl)
-            .map {
-                case (id, (((pos, mass), displ), oldDispl)) =>
+        val modifiedGraph = graph
+            .joinVertices(this.nodesDispls) {
+                case (id, (pos, mass), (displ, oldDispl)) =>
                     val swinging = mass * (oldDispl - displ).length
                     val factor = speed / (1.0 + Math.sqrt(speed * swinging))
                     val newPos = pos + (displ * factor)
-                    (id, newPos)
-            }
-
-        val modifiedGraph = graph
-            .joinVertices(modifiedVertex) {
-                case (id, (pos, mass), newPos) =>
                     (newPos, mass)
             }
 
-        this.nodesOldDispl = sumDisplacements
-
-        val verticesCentroidDistribution = verticesWithCentroid
+        val centroidsDegree = verticesWithCentroid
             .map {
                 case (id, (vPos, vMass, (cId, cPos, cMass))) =>
                     (cId, 1)
@@ -228,7 +221,7 @@ object FA2Spark2 extends FA2Data with Layouter[(Point2, Int), SparkGraph] {
             }
             .collect()
             .map {
-                case (id, (pos, mass)) => (pos / verticesCentroidDistribution(id), mass)
+                case (id, (pos, mass)) => (pos / centroidsDegree(id), mass)
             }
 
         new SparkGraph[(Point2, Int)](modifiedGraph)
